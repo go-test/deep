@@ -167,7 +167,7 @@ func TestDeepRecursion(t *testing.T) {
 		S s2
 	}
 	foo := map[string]s1{
-		"foo": s1{ // 1
+		"foo": { // 1
 			S: s2{ // 2
 				S: s3{ // 3
 					S: 42, // 4
@@ -176,7 +176,7 @@ func TestDeepRecursion(t *testing.T) {
 		},
 	}
 	bar := map[string]s1{
-		"foo": s1{
+		"foo": {
 			S: s2{
 				S: s3{
 					S: 100,

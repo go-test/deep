@@ -12,30 +12,32 @@ import (
 )
 
 var (
-	// Decimal places to round float values when comparing
+	// FloatPrecision is the number of decimal places to round float values
+	// to when comparing.
 	FloatPrecision = 10
 
-	// Stop comparing after this many differences found
+	// MaxDiff specifies the maximum number of differences to return.
 	MaxDiff = 10
 
-	// Stop recursing into structures at this many levels
+	// MaxDepth specifies the maximum levels of a struct to recurse into.
 	MaxDepth = 10
 
-	// Log errors to STDERR
+	// LogErrors causes errors to be logged to STDERR when true.
 	LogErrors = false
 
-	// Compare unexported struct fields, like s in T{s int}
+	// CompareUnexportedFields causes unexported struct fields, like s in
+	// T{s int}, to be comparsed when true.
 	CompareUnexportedFields = false
 )
 
 var (
-	// Logged when MaxDepth is reached
+	// ErrMaxRecursion is logged when MaxDepth is reached.
 	ErrMaxRecursion = errors.New("recursed to MaxDepth")
 
-	// Logged when Equal passed two different types of values
+	// ErrTypeMismatch is logged when Equal passed two different types of values.
 	ErrTypeMismatch = errors.New("variables are different reflect.Type")
 
-	// Logged when a primative Go kind is not handled
+	// ErrNotHandled is logged when a primitive Go kind is not handled.
 	ErrNotHandled = errors.New("cannot compare the reflect.Kind")
 )
 

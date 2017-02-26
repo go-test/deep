@@ -1,27 +1,3 @@
-/*
-	The MIT License (MIT)
-
-	Copyright 2015-2017 Daniel Nichter
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in all
-	copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	SOFTWARE.
-*/
-
 // Package deep provides function deep.Equal which is like reflect.DeepEqual but
 // retunrs a list of differences. This is helpful when comparing complex types
 // like structures and maps.
@@ -36,17 +12,31 @@ import (
 )
 
 var (
-	FloatPrecision          = 10
-	MaxDiff                 = 10
-	MaxDepth                = 10
-	LogErrors               = false
+	// Decimal places to round float values when comparing
+	FloatPrecision = 10
+
+	// Stop comparing after this many differences found
+	MaxDiff = 10
+
+	// Stop recursing into structures at this many levels
+	MaxDepth = 10
+
+	// Log errors to STDERR
+	LogErrors = false
+
+	// Compare unexported struct fields, like s in T{s int}
 	CompareUnexportedFields = false
 )
 
 var (
+	// Logged when MaxDepth is reached
 	ErrMaxRecursion = errors.New("recursed to MaxDepth")
+
+	// Logged when Equal passed two different types of values
 	ErrTypeMismatch = errors.New("variables are different reflect.Type")
-	ErrNotHandled   = errors.New("cannot compare the reflect.Kind")
+
+	// Logged when a primative Go kind is not handled
+	ErrNotHandled = errors.New("cannot compare the reflect.Kind")
 )
 
 type cmp struct {
@@ -101,7 +91,6 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	}
 	if bKind == reflect.Ptr || bKind == reflect.Interface {
 		b = b.Elem()
-		bKind = b.Kind()
 		if b.IsValid() {
 			bType = b.Type()
 		}

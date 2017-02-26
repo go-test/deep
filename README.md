@@ -1,5 +1,7 @@
 # Deep Variable Equality for Humans
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/go-test/deep)](https://goreportcard.com/report/github.com/go-test/deep) [![Build Status](https://travis-ci.org/go-test/deep.svg?branch=master)](https://travis-ci.org/go-test/deep) [![GoDoc](https://godoc.org/github.com/go-test/deep?status.svg)](https://godoc.org/github.com/go-test/deep)
+
 This package provides a single function: `deep.Equal`. It's like [reflect.DeepEqual](http://golang.org/pkg/reflect/#DeepEqual) but much friendlier to humans (or any sentient being) for two reason:
 
 * `deep.Equal` returns a list of differences

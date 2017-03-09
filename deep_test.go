@@ -1,6 +1,7 @@
 package deep_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -621,5 +622,41 @@ func TestInterface(t *testing.T) {
 	}
 	if len(diff) != 1 {
 		t.Errorf("expected 1 diff, got %d", len(diff))
+	}
+}
+
+func TestError(t *testing.T) {
+	a := errors.New("it broke")
+	b := errors.New("it broke")
+
+	diff := deep.Equal(a, b)
+	if len(diff) != 0 {
+		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
+	}
+
+	b = errors.New("it fell apart")
+	diff = deep.Equal(a, b)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(diff))
+	}
+	if diff[0] != "it broke != it fell apart" {
+		t.Errorf("got '%s', expected 'it broke != it fell apart'", diff[0])
+	}
+
+	type tWithError struct {
+		Error error
+	}
+	t1 := tWithError{
+		Error: a,
+	}
+	t2 := tWithError{
+		Error: b,
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(diff))
+	}
+	if diff[0] != "Error: it broke != it fell apart" {
+		t.Errorf("got '%s', expected 'Error: it broke != it fell apart'", diff[0])
 	}
 }

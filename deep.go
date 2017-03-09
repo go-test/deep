@@ -47,6 +47,8 @@ type cmp struct {
 	floatFormat string
 }
 
+var errorType = reflect.TypeOf((*error)(nil)).Elem()
+
 // Equal compares variables a and b, recursing into their structure up to
 // MaxDepth levels deep, and returns a list of differences, or nil if there are
 // none. Some differences may not be found if an error is also returned.
@@ -79,6 +81,16 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	if aType != bType {
 		c.saveDiff(aType, bType)
 		logError(ErrTypeMismatch)
+		return
+	}
+
+	// If both types implement the error interface, compare the error strings
+	if aType.Implements(errorType) && bType.Implements(errorType) {
+		aString := a.MethodByName("Error").Call(nil)[0].String()
+		bString := b.MethodByName("Error").Call(nil)[0].String()
+		if aString != bString {
+			c.saveDiff(aString, bString)
+		}
 		return
 	}
 

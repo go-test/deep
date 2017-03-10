@@ -643,6 +643,7 @@ func TestError(t *testing.T) {
 		t.Errorf("got '%s', expected 'it broke != it fell apart'", diff[0])
 	}
 
+	// Both errors set
 	type tWithError struct {
 		Error error
 	}
@@ -658,5 +659,34 @@ func TestError(t *testing.T) {
 	}
 	if diff[0] != "Error: it broke != it fell apart" {
 		t.Errorf("got '%s', expected 'Error: it broke != it fell apart'", diff[0])
+	}
+
+	// Both errors nil
+	t1 = tWithError{
+		Error: nil,
+	}
+	t2 = tWithError{
+		Error: nil,
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 0 {
+		t.Log(diff)
+		t.Fatalf("expected 0 diff, got %d", len(diff))
+	}
+
+	// One error is nil
+	t1 = tWithError{
+		Error: errors.New("foo"),
+	}
+	t2 = tWithError{
+		Error: nil,
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Log(diff)
+		t.Fatalf("expected 1 diff, got %d", len(diff))
+	}
+	if diff[0] != "Error: *errors.errorString != <nil pointer>" {
+		t.Errorf("got '%s', expected 'Error: *errors.errorString != <nil pointer>'", diff[0])
 	}
 }

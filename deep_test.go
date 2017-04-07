@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/beyazc/deep"
+	"github.com/go-test/deep"
 )
 
 func TestString(t *testing.T) {

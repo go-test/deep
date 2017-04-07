@@ -63,6 +63,17 @@ func Equal(a, b interface{}) []string {
 		buff:        []string{},
 		floatFormat: fmt.Sprintf("%%.%df", FloatPrecision),
 	}
+	if a == nil && b == nil {
+		return nil
+	} else if a == nil && b != nil {
+		c.saveDiff(b, "<nil pointer>")
+	} else if a != nil && b == nil {
+		c.saveDiff(a, "<nil pointer>")
+	}
+	if len(c.diff) > 0 {
+		return c.diff
+	}
+
 	c.equals(aVal, bVal, 0)
 	if len(c.diff) > 0 {
 		return c.diff // diffs

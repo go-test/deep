@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-test/deep"
+	"github.com/beyazc/deep"
 )
 
 func TestString(t *testing.T) {
@@ -701,6 +701,14 @@ func TestNil(t *testing.T) {
 	var someNilThing interface{} = nil
 	diff := deep.Equal(someNilThing, mark)
 	if diff == nil {
+		t.Error("Nil value to comparision should not be equal")
+	}
+	diff = deep.Equal(mark, someNilThing)
+	if diff == nil {
+		t.Error("Nil value to comparision should not be equal")
+	}
+	diff = deep.Equal(someNilThing, someNilThing)
+	if diff != nil {
 		t.Error("Nil value to comparision should not be equal")
 	}
 }

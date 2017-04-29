@@ -1,5 +1,5 @@
 // Package deep provides function deep.Equal which is like reflect.DeepEqual but
-// retunrs a list of differences. This is helpful when comparing complex types
+// returns a list of differences. This is helpful when comparing complex types
 // like structures and maps.
 package deep
 

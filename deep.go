@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"reflect"
 	"strings"
 )
@@ -79,6 +80,40 @@ func Equal(a, b interface{}) []string {
 		return c.diff // diffs
 	}
 	return nil // no diffs
+}
+
+// sortedMapKeys accepts a reflect Value of a map and returns a sorted slice of keys ([]reflect.Value)
+func sortedMapKeys(m reflect.Value) []reflect.Value {
+	type Pair struct {
+		Key	reflect.Value
+		Str	string
+	}
+	var keys  = m.MapKeys()
+	var pairs = make([]Pair, len(keys))
+	for i, key := range keys {
+		pairs[i].Key = key
+		pairs[i].Str = fmt.Sprintf("%v", key)
+	}
+	sort.Slice(pairs, func(i,j int)bool{return pairs[i].Str < pairs[j].Str})
+	for i, pair := range pairs {
+		keys[i] = pair.Key
+	}
+	return keys
+}
+
+// sortedMapRepr accepts a reflect Value of a map and returns a sorted string representation of it
+func sortedMapRepr(m reflect.Value) string {
+	var parts = []string{"map["}
+	for _, key := range sortedMapKeys(m) {
+		var val = m.MapIndex(key)
+		var sep = ""
+		if len(parts) > 1 {
+			sep = " "
+		}
+		parts = append(parts, sep, fmt.Sprintf("%v", key), ":", fmt.Sprintf("%v", val))
+	}
+	parts = append(parts, "]")
+	return strings.Join(parts, "")
 }
 
 func (c *cmp) equals(a, b reflect.Value, level int) {
@@ -205,9 +240,9 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 		if a.IsNil() || b.IsNil() {
 			if a.IsNil() && !b.IsNil() {
-				c.saveDiff("<nil map>", b)
+				c.saveDiff("<nil map>", sortedMapRepr(b))
 			} else if !a.IsNil() && b.IsNil() {
-				c.saveDiff(a, "<nil map>")
+				c.saveDiff(sortedMapRepr(a), "<nil map>")
 			}
 			return
 		}
@@ -216,7 +251,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			return
 		}
 
-		for _, key := range a.MapKeys() {
+		for _, key := range sortedMapKeys(a) {
 			c.push(fmt.Sprintf("map[%s]", key))
 
 			aVal := a.MapIndex(key)
@@ -234,7 +269,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			}
 		}
 
-		for _, key := range b.MapKeys() {
+		for _, key := range sortedMapKeys(b) {
 			if aVal := a.MapIndex(key); aVal.IsValid() {
 				continue
 			}

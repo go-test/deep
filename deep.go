@@ -48,6 +48,19 @@ type cmp struct {
 	floatFormat string
 }
 
+// keyPair is a struct for sorting slices of reflect.Values
+type keyPair struct {
+	Key	reflect.Value
+	Str	string
+}
+// byStr implements sort.Interface for []keyPair based on the .Str field
+type byStr []keyPair
+
+func (a byStr) Len() int           { return len(a) }
+func (a byStr) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byStr) Less(i, j int) bool { return a[i].Str < a[j].Str }
+
+
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 // Equal compares variables a and b, recursing into their structure up to
@@ -84,17 +97,18 @@ func Equal(a, b interface{}) []string {
 
 // sortedMapKeys accepts a reflect Value of a map and returns a sorted slice of keys ([]reflect.Value)
 func sortedMapKeys(m reflect.Value) []reflect.Value {
-	type Pair struct {
-		Key	reflect.Value
-		Str	string
-	}
+	// prepare pairs for sorting
 	var keys  = m.MapKeys()
-	var pairs = make([]Pair, len(keys))
+	var pairs = make([]keyPair, len(keys))
 	for i, key := range keys {
 		pairs[i].Key = key
 		pairs[i].Str = fmt.Sprintf("%v", key)
 	}
-	sort.Slice(pairs, func(i,j int)bool{return pairs[i].Str < pairs[j].Str})
+
+	// sort the pairs
+	sort.Sort(byStr(pairs))
+
+	// return sorted keys
 	for i, pair := range pairs {
 		keys[i] = pair.Key
 	}

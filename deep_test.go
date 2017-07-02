@@ -625,6 +625,28 @@ func TestInterface(t *testing.T) {
 	}
 }
 
+func TestInterface2(t *testing.T) {
+	defer func() {
+		if val := recover(); val != nil {
+			t.Fatalf("panic: %v", val)
+		}
+	}()
+
+	a := map[string]interface{}{
+		"bar": 1,
+	}
+	b := map[string]interface{}{
+		"bar": 1.23,
+	}
+	diff := deep.Equal(a, b)
+	if len(diff) == 0 {
+		t.Fatalf("expected 1 diff, got zero")
+	}
+	if len(diff) != 1 {
+		t.Errorf("expected 1 diff, got %d", len(diff))
+	}
+}
+
 func TestError(t *testing.T) {
 	a := errors.New("it broke")
 	b := errors.New("it broke")

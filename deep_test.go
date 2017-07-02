@@ -647,6 +647,22 @@ func TestInterface2(t *testing.T) {
 	}
 }
 
+func TestInterface3(t *testing.T) {
+	type Value struct{ int }
+	a := map[string]interface{}{
+		"foo": &Value{},
+	}
+	b := map[string]interface{}{
+		"foo": 1.23,
+	}
+	diff := deep.Equal(a, b)
+	if len(diff) == 0 {
+		t.Fatalf("expected 1 diff, got zero")
+	}
+
+	t.Errorf("expected 1 diff, got: %s", diff)
+}
+
 func TestError(t *testing.T) {
 	a := errors.New("it broke")
 	b := errors.New("it broke")

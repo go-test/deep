@@ -334,7 +334,6 @@ func (c *cmp) saveDiff(aval, bval interface{}) {
 	}
 }
 
-
 func logError(err error) {
 	if LogErrors {
 		log.Println(err)

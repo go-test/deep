@@ -87,6 +87,16 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		return
 	}
 
+	// Check if one value is nil, e.g. T{x: *X} and T.x is nil
+	if !a.IsValid() || !b.IsValid() {
+		if a.IsValid() && !b.IsValid() {
+			c.saveDiff(a, "<nil pointer>")
+		} else if !a.IsValid() && b.IsValid() {
+			c.saveDiff("<nil pointer>", b)
+		}
+		return
+	}
+
 	// If differenet types, they can't be equal
 	aType := a.Type()
 	bType := b.Type()
@@ -115,27 +125,18 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	}
 
 	// Dereference pointers and interface{}
-	if aKind == reflect.Ptr || aKind == reflect.Interface {
-		a = a.Elem()
-		aKind = a.Kind()
-		if a.IsValid() {
-			aType = a.Type()
-		}
-	}
-	if bKind == reflect.Ptr || bKind == reflect.Interface {
-		b = b.Elem()
-		if b.IsValid() {
-			bType = b.Type()
-		}
-	}
+	if aElem, bElem := (aKind == reflect.Ptr || aKind == reflect.Interface),
+		(bKind == reflect.Ptr || bKind == reflect.Interface); aElem || bElem {
 
-	// Check if one value is nil, e.g. T{x: *X} and T.x is nil
-	if !a.IsValid() || !b.IsValid() {
-		if a.IsValid() && !b.IsValid() {
-			c.saveDiff(aType, "<nil pointer>")
-		} else if !a.IsValid() && b.IsValid() {
-			c.saveDiff("<nil pointer>", bType)
+		if aElem {
+			a = a.Elem()
 		}
+
+		if bElem {
+			b = b.Elem()
+		}
+
+		c.equals(a, b, level+1)
 		return
 	}
 

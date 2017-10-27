@@ -335,10 +335,6 @@ func (c *cmp) saveDiff(aval, bval interface{}) {
 	}
 }
 
-func init() {
-	log.SetFlags(log.Lshortfile)
-}
-
 func logError(err error) {
 	if LogErrors {
 		log.Println(err)

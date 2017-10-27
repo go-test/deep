@@ -558,7 +558,7 @@ func TestPointer(t *testing.T) {
 	if len(diff) != 1 {
 		t.Error("too many diff:", diff)
 	}
-	if diff[0] != "<nil pointer> != {1}" {
+	if diff[0] != "<nil pointer> != deep_test.T" {
 		t.Error("wrong diff:", diff[0])
 	}
 
@@ -571,7 +571,7 @@ func TestPointer(t *testing.T) {
 	if len(diff) != 1 {
 		t.Error("too many diff:", diff)
 	}
-	if diff[0] != "{1} != <nil pointer>" {
+	if diff[0] != "deep_test.T != <nil pointer>" {
 		t.Error("wrong diff:", diff[0])
 	}
 
@@ -726,8 +726,8 @@ func TestError(t *testing.T) {
 		t.Log(diff)
 		t.Fatalf("expected 1 diff, got %d", len(diff))
 	}
-	if diff[0] != "Error: foo != <nil pointer>" {
-		t.Errorf("got '%s', expected 'Error: foo != <nil pointer>'", diff[0])
+	if diff[0] != "Error: *errors.errorString != <nil pointer>" {
+		t.Errorf("got '%s', expected 'Error: *errors.errorString != <nil pointer>'", diff[0])
 	}
 }
 

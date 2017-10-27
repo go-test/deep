@@ -90,9 +90,9 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	// Check if one value is nil, e.g. T{x: *X} and T.x is nil
 	if !a.IsValid() || !b.IsValid() {
 		if a.IsValid() && !b.IsValid() {
-			c.saveDiff(a, "<nil pointer>")
+			c.saveDiff(a.Type(), "<nil pointer>")
 		} else if !a.IsValid() && b.IsValid() {
-			c.saveDiff("<nil pointer>", b)
+			c.saveDiff("<nil pointer>", b.Type())
 		}
 		return
 	}

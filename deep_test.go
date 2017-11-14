@@ -613,7 +613,7 @@ func TestEmptySlice(t *testing.T) {
 	var c []int
 
 	// Non-empty is not equal to empty.
-	diff = deep.Equal(a, b)
+	diff := deep.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -728,6 +728,77 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 	}
 	if diff[0] != "slice[0]: <no value> != 1" {
 		t.Error("wrong diff:", diff[0])
+	}
+}
+
+func TestSiblingSlices(t *testing.T) {
+	father := []int{1, 2, 3, 4}
+	a := father[0:3]
+	b := father[0:3]
+
+	diff := deep.Equal(a, b)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+	diff = deep.Equal(b, a)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	a = father[0:3]
+	b = father[0:2]
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[2]: 3 != <no value>" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	a = father[0:2]
+	b = father[0:3]
+
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[2]: <no value> != 3" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	a = father[0:2]
+	b = father[2:4]
+
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 2 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[0]: 1 != 3" {
+		t.Error("wrong diff:", diff[0])
+	}
+	if diff[1] != "slice[1]: 2 != 4" {
+		t.Error("wrong diff:", diff[1])
+	}
+
+	a = father[0:0]
+	b = father[1:1]
+
+	diff = deep.Equal(a, b)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+	diff = deep.Equal(b, a)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
 	}
 }
 

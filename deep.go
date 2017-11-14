@@ -257,12 +257,13 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			return
 		}
 
-		if a.Pointer() == b.Pointer() {
+		aLen := a.Len()
+		bLen := b.Len()
+
+		if a.Pointer() == b.Pointer() && aLen == bLen {
 			return
 		}
 
-		aLen := a.Len()
-		bLen := b.Len()
 		n := aLen
 		if bLen > aLen {
 			n = bLen

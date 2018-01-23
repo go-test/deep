@@ -248,21 +248,10 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			}
 		}
 	case reflect.Array:
-		aLen := a.Len()
-		bLen := b.Len()
-		n := aLen
-		if bLen > aLen {
-			n = bLen
-		}
+		n := a.Len()
 		for i := 0; i < n; i++ {
 			c.push(fmt.Sprintf("array[%d]", i))
-			if i < aLen && i < bLen {
-				c.equals(a.Index(i), b.Index(i), level+1)
-			} else if i < aLen {
-				c.saveDiff(a.Index(i), "<no value>")
-			} else {
-				c.saveDiff("<no value>", b.Index(i))
-			}
+			c.equals(a.Index(i), b.Index(i), level+1)
 			c.pop()
 			if len(c.diff) >= MaxDiff {
 				break

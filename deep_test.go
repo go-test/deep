@@ -2,6 +2,7 @@ package deep_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -463,6 +464,72 @@ func TestMap(t *testing.T) {
 	}
 	if diff[0] != "<nil map> != map[foo:1 bar:2]" && diff[0] != "<nil map> != map[bar:2 foo:1]" {
 		t.Error("wrong diff:", diff[0])
+	}
+}
+
+func TestArray(t *testing.T) {
+	a := [3]int{1, 2, 3}
+	b := [3]int{1, 2, 3}
+
+	diff := deep.Equal(a, b)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	diff = deep.Equal(a, a)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	b[2] = 333
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "array[2]: 3 != 333" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	c := [3]int{1, 2, 2}
+	diff = deep.Equal(a, c)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "array[2]: 3 != 2" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	var d [2]int
+	diff = deep.Equal(a, d)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "[3]int != [2]int" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	e := [12]int{}
+	f := [12]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	diff = deep.Equal(e, f)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != deep.MaxDiff {
+		t.Error("not enough diffs:", diff)
+	}
+	for i := 0; i < deep.MaxDiff; i++ {
+		if diff[i] != fmt.Sprintf("array[%d]: 0 != %d", i+1, i+1) {
+			t.Error("wrong diff:", diff[i])
+		}
 	}
 }
 

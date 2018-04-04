@@ -606,18 +606,48 @@ func TestSlice(t *testing.T) {
 	}
 }
 
-func TestPointer(t *testing.T) {
-	type T struct {
-		i int
-	}
+func TestNilInterface(t *testing.T) {
+	type T struct{ i int }
+
 	a := &T{i: 1}
-	b := &T{i: 1}
+	diff := deep.Equal(nil, a)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "<nil pointer> != &{1}" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	diff = deep.Equal(a, nil)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "&{1} != <nil pointer>" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	diff = deep.Equal(nil, nil)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+}
+
+func TestPointer(t *testing.T) {
+	type T struct{ i int }
+
+	a, b := &T{i: 1}, &T{i: 1}
 	diff := deep.Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	a = nil
+	a, b = nil, &T{}
 	diff = deep.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -629,8 +659,7 @@ func TestPointer(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
-	a = b
-	b = nil
+	a, b = &T{}, nil
 	diff = deep.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -642,8 +671,7 @@ func TestPointer(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
-	a = nil
-	b = nil
+	a, b = nil, nil
 	diff = deep.Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)

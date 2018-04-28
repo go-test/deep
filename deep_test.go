@@ -670,6 +670,36 @@ func TestTime(t *testing.T) {
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
+
+	// https://github.com/go-test/deep/issues/15
+	type Time15 struct {
+		time.Time
+	}
+	a15 := Time15{now}
+	b15 := Time15{now}
+	diff = deep.Equal(a15, b15)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	later := now.Add(1 * time.Second)
+	b15 = Time15{later}
+	diff = deep.Equal(a15, b15)
+	if len(diff) != 1 {
+		t.Errorf("got %d diffs, exected 1:", diff)
+	}
+
+	// No diff in Equal should not affect diff of other fields (Foo)
+	type Time17 struct {
+		time.Time
+		Foo int
+	}
+	a17 := Time17{Time: now, Foo: 1}
+	b17 := Time17{Time: now, Foo: 2}
+	diff = deep.Equal(a17, b17)
+	if len(diff) != 1 {
+		t.Errorf("got %d diffs, exected 1:", diff)
+	}
 }
 
 func TestInterface(t *testing.T) {

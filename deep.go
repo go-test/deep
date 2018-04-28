@@ -158,8 +158,9 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			Iterate through the fields (FirstName, LastName), recurse into their values.
 		*/
 
-		// Types with an Equal() method, like time.Time
-		if eqFunc := a.MethodByName("Equal"); eqFunc.IsValid() {
+		// Types with an Equal() method, like time.Time, only if struct field
+		// is exported (CanInterface)
+		if eqFunc := a.MethodByName("Equal"); eqFunc.IsValid() && eqFunc.CanInterface() {
 			// Handle https://github.com/go-test/deep/issues/15:
 			// Don't call T.Equal if the method is from an embedded struct, like:
 			//   type Foo struct { time.Time }

@@ -702,6 +702,35 @@ func TestTime(t *testing.T) {
 	}
 }
 
+func TestTimeUnexported(t *testing.T) {
+	// https://github.com/go-test/deep/issues/18
+	// Can't call Call() on exported Value func
+	defaultCompareUnexportedFields := deep.CompareUnexportedFields
+	deep.CompareUnexportedFields = true
+	defer func() { deep.CompareUnexportedFields = defaultCompareUnexportedFields }()
+
+	now := time.Now()
+	type hiddenTime struct {
+		t time.Time
+	}
+	htA := &hiddenTime{t: now}
+	htB := &hiddenTime{t: now}
+	diff := deep.Equal(htA, htB)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	// This doesn't call time.Time.Equal(), it compares the unexported fields
+	// in time.Time, causing a diff like:
+	// [t.wall: 13740788835924462040 != 13740788836998203864 t.ext: 1447549 != 1001447549]
+	later := now.Add(1 * time.Second)
+	htC := &hiddenTime{t: later}
+	diff = deep.Equal(htA, htC)
+	if len(diff) != 2 {
+		t.Error("got %d diffs, expected 2", diff)
+	}
+}
+
 func TestInterface(t *testing.T) {
 	a := map[string]interface{}{
 		"foo": map[string]string{

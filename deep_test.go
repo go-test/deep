@@ -3,6 +3,7 @@ package deep_test
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -726,8 +727,13 @@ func TestTimeUnexported(t *testing.T) {
 	later := now.Add(1 * time.Second)
 	htC := &hiddenTime{t: later}
 	diff = deep.Equal(htA, htC)
-	if len(diff) != 2 {
-		t.Errorf("got %d diffs, expected 2: %s", len(diff), diff)
+
+	expected := 1
+	if _, ok := reflect.TypeOf(htA.t).FieldByName("ext"); ok {
+		expected = 2
+	}
+	if len(diff) != expected {
+		t.Errorf("got %d diffs, expected %d: %s", len(diff), expected, diff)
 	}
 }
 

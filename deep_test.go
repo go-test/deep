@@ -3,6 +3,7 @@ package deep_test
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -217,7 +218,7 @@ func TestMaxDiff(t *testing.T) {
 		t.Fatal("no diffs")
 	}
 	if len(diff) != deep.MaxDiff {
-		t.Errorf("got %d diffs, execpted %d", len(diff), deep.MaxDiff)
+		t.Errorf("got %d diffs, expected %d", len(diff), deep.MaxDiff)
 	}
 
 	defaultCompareUnexportedFields := deep.CompareUnexportedFields
@@ -237,7 +238,7 @@ func TestMaxDiff(t *testing.T) {
 		t.Fatal("no diffs")
 	}
 	if len(diff) != deep.MaxDiff {
-		t.Errorf("got %d diffs, execpted %d", len(diff), deep.MaxDiff)
+		t.Errorf("got %d diffs, expected %d", len(diff), deep.MaxDiff)
 	}
 
 	// Same keys, too many diffs
@@ -261,7 +262,7 @@ func TestMaxDiff(t *testing.T) {
 	}
 	if len(diff) != deep.MaxDiff {
 		t.Log(diff)
-		t.Errorf("got %d diffs, execpted %d", len(diff), deep.MaxDiff)
+		t.Errorf("got %d diffs, expected %d", len(diff), deep.MaxDiff)
 	}
 
 	// Too many missing keys
@@ -284,7 +285,7 @@ func TestMaxDiff(t *testing.T) {
 	}
 	if len(diff) != deep.MaxDiff {
 		t.Log(diff)
-		t.Errorf("got %d diffs, execpted %d", len(diff), deep.MaxDiff)
+		t.Errorf("got %d diffs, expected %d", len(diff), deep.MaxDiff)
 	}
 }
 
@@ -686,7 +687,7 @@ func TestTime(t *testing.T) {
 	b15 = Time15{later}
 	diff = deep.Equal(a15, b15)
 	if len(diff) != 1 {
-		t.Errorf("got %d diffs, exected 1:", diff)
+		t.Errorf("got %d diffs, expected 1: %s", len(diff), diff)
 	}
 
 	// No diff in Equal should not affect diff of other fields (Foo)
@@ -698,7 +699,7 @@ func TestTime(t *testing.T) {
 	b17 := Time17{Time: now, Foo: 2}
 	diff = deep.Equal(a17, b17)
 	if len(diff) != 1 {
-		t.Errorf("got %d diffs, exected 1:", diff)
+		t.Errorf("got %d diffs, expected 1: %s", len(diff), diff)
 	}
 }
 
@@ -726,8 +727,13 @@ func TestTimeUnexported(t *testing.T) {
 	later := now.Add(1 * time.Second)
 	htC := &hiddenTime{t: later}
 	diff = deep.Equal(htA, htC)
-	if len(diff) != 2 {
-		t.Error("got %d diffs, expected 2", diff)
+
+	expected := 1
+	if _, ok := reflect.TypeOf(htA.t).FieldByName("ext"); ok {
+		expected = 2
+	}
+	if len(diff) != expected {
+		t.Errorf("got %d diffs, expected %d: %s", len(diff), expected, diff)
 	}
 }
 
@@ -747,7 +753,7 @@ func TestInterface(t *testing.T) {
 		t.Fatalf("expected 1 diff, got zero")
 	}
 	if len(diff) != 1 {
-		t.Errorf("expected 1 diff, got %d", len(diff))
+		t.Errorf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
 }
 
@@ -769,7 +775,7 @@ func TestInterface2(t *testing.T) {
 		t.Fatalf("expected 1 diff, got zero")
 	}
 	if len(diff) != 1 {
-		t.Errorf("expected 1 diff, got %d", len(diff))
+		t.Errorf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
 }
 
@@ -803,7 +809,7 @@ func TestError(t *testing.T) {
 	b = errors.New("it fell apart")
 	diff = deep.Equal(a, b)
 	if len(diff) != 1 {
-		t.Fatalf("expected 1 diff, got %d", len(diff))
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
 	if diff[0] != "it broke != it fell apart" {
 		t.Errorf("got '%s', expected 'it broke != it fell apart'", diff[0])
@@ -821,7 +827,7 @@ func TestError(t *testing.T) {
 	}
 	diff = deep.Equal(t1, t2)
 	if len(diff) != 1 {
-		t.Fatalf("expected 1 diff, got %d", len(diff))
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
 	if diff[0] != "Error: it broke != it fell apart" {
 		t.Errorf("got '%s', expected 'Error: it broke != it fell apart'", diff[0])
@@ -837,7 +843,7 @@ func TestError(t *testing.T) {
 	diff = deep.Equal(t1, t2)
 	if len(diff) != 0 {
 		t.Log(diff)
-		t.Fatalf("expected 0 diff, got %d", len(diff))
+		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
 
 	// One error is nil
@@ -850,7 +856,7 @@ func TestError(t *testing.T) {
 	diff = deep.Equal(t1, t2)
 	if len(diff) != 1 {
 		t.Log(diff)
-		t.Fatalf("expected 1 diff, got %d", len(diff))
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
 	if diff[0] != "Error: *errors.errorString != <nil pointer>" {
 		t.Errorf("got '%s', expected 'Error: *errors.errorString != <nil pointer>'", diff[0])
@@ -867,14 +873,14 @@ func TestNil(t *testing.T) {
 	var someNilThing interface{} = nil
 	diff := deep.Equal(someNilThing, mark)
 	if diff == nil {
-		t.Error("Nil value to comparision should not be equal")
+		t.Error("Nil value to comparison should not be equal")
 	}
 	diff = deep.Equal(mark, someNilThing)
 	if diff == nil {
-		t.Error("Nil value to comparision should not be equal")
+		t.Error("Nil value to comparison should not be equal")
 	}
 	diff = deep.Equal(someNilThing, someNilThing)
 	if diff != nil {
-		t.Error("Nil value to comparision should not be equal")
+		t.Error("Nil value to comparison should not be equal")
 	}
 }

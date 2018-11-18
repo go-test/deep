@@ -68,7 +68,7 @@ func Equal(a, b interface{}) []string {
 	if a == nil && b == nil {
 		return nil
 	} else if a == nil && b != nil {
-		c.saveDiff(b, "<nil pointer>")
+		c.saveDiff("<nil pointer>", b)
 	} else if a != nil && b == nil {
 		c.saveDiff(a, "<nil pointer>")
 	}

@@ -912,3 +912,27 @@ func TestNil(t *testing.T) {
 		t.Error("Nil value to comparison should not be equal")
 	}
 }
+
+func TestStructWithPointers(t *testing.T) {
+	type Int struct {
+		value *int
+	}
+	newInt := func(v int) Int {
+		return Int{&v}
+	}
+
+	t1 := newInt(1)
+	t2 := newInt(1)
+
+	diff := deep.Equal(t1, t2)
+	if diff != nil {
+		t.Error("struct field pointers to two of the same values should be equal")
+	}
+
+	t2 = newInt(2)
+
+	diff = deep.Equal(t1, t2)
+	if diff == nil {
+		t.Error("struct field pointers to two different values should not be equal")
+	}
+}

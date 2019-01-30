@@ -27,7 +27,7 @@ var (
 	LogErrors = false
 
 	// CompareUnexportedFields causes unexported struct fields, like s in
-	// T{s int}, to be comparsed when true.
+	// T{s int}, to be compared when true.
 	CompareUnexportedFields = false
 
 	// NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
@@ -130,8 +130,8 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	}
 
 	// Dereference pointers and interface{}
-	if aElem, bElem := (aKind == reflect.Ptr || aKind == reflect.Interface),
-		(bKind == reflect.Ptr || bKind == reflect.Interface); aElem || bElem {
+	if aElem, bElem := aKind == reflect.Ptr || aKind == reflect.Interface,
+		bKind == reflect.Ptr || bKind == reflect.Interface; aElem || bElem {
 
 		if aElem {
 			a = a.Elem()

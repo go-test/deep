@@ -188,6 +188,9 @@ func TestDeepRecursion(t *testing.T) {
 		},
 	}
 	diff := deep.Equal(foo, bar)
+	if diff != nil {
+		t.Fatal("expected no diff")
+	}
 
 	defaultMaxDepth := deep.MaxDepth
 	deep.MaxDepth = 4

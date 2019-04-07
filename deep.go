@@ -29,6 +29,9 @@ var (
 	// CompareUnexportedFields causes unexported struct fields, like s in
 	// T{s int}, to be comparsed when true.
 	CompareUnexportedFields = false
+
+	// NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
+	NilSlicesAreEmpty = false
 )
 
 var (
@@ -273,21 +276,30 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			}
 		}
 	case reflect.Slice:
-		if a.IsNil() || b.IsNil() {
+		aLen := a.Len()
+		bLen := b.Len()
+		if NilSlicesAreEmpty {
+			if a.IsNil() && bLen != 0 {
+				c.saveDiff("<nil slice>", b)
+				return
+			} else if aLen != 0 && b.IsNil() {
+				c.saveDiff(a, "<nil slice>")
+				return
+			}
+		} else {
 			if a.IsNil() && !b.IsNil() {
 				c.saveDiff("<nil slice>", b)
+				return
 			} else if !a.IsNil() && b.IsNil() {
 				c.saveDiff(a, "<nil slice>")
+				return
 			}
-			return
 		}
 
 		if a.Pointer() == b.Pointer() {
 			return
 		}
 
-		aLen := a.Len()
-		bLen := b.Len()
 		n := aLen
 		if bLen > aLen {
 			n = bLen

@@ -605,6 +605,117 @@ func TestSlice(t *testing.T) {
 	if diff[0] != "<nil slice> != [1 2 3]" {
 		t.Error("wrong diff:", diff[0])
 	}
+
+	a = a[:1]
+	b = b[:0]
+
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[0]: 1 != <no value>" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	diff = deep.Equal(b, a)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[0]: <no value> != 1" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	diff = deep.Equal(b, c)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "[] != <nil slice>" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	diff = deep.Equal(c, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "<nil slice> != []" {
+		t.Error("wrong diff:", diff[0])
+	}
+}
+
+func TestNilSlicesAreEmpty(t *testing.T) {
+	defaultNilSlicesAreEmpty := deep.NilSlicesAreEmpty
+	deep.NilSlicesAreEmpty = true
+	defer func() { deep.NilSlicesAreEmpty = defaultNilSlicesAreEmpty }()
+
+	a := []int{1}
+	b := []int{}
+	var c []int
+
+	diff := deep.Equal(b, c)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	diff = deep.Equal(c, b)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	diff = deep.Equal(a, c)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "[1] != <nil slice>" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	diff = deep.Equal(c, a)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "<nil slice> != [1]" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[0]: 1 != <no value>" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	diff = deep.Equal(b, a)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[0]: <no value> != 1" {
+		t.Error("wrong diff:", diff[0])
+	}
 }
 
 func TestNilInterface(t *testing.T) {

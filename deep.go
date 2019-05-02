@@ -63,7 +63,7 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 func Equal(a interface{}, b interface{}) []string {
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
-	c = &cmp{
+	c := &cmp{
 		diff:        []string{},
 		buff:        []string{},
 		floatFormat: fmt.Sprintf("%%.%df", FloatPrecision),

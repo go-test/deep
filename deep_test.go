@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-test/deep"
+	"github.com/psparago/deep"
 )
 
 func TestString(t *testing.T) {

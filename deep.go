@@ -46,7 +46,7 @@ type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
-	callback    *func()
+	callback    func()
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
@@ -58,7 +58,7 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 //
 // If a type has an Equal method, like time.Equal, it is called to check for
 // equality.
-func Compare(a interface{}, b interface{}, callback *func()) []string {
+func Compare(a interface{}, b interface{}, callback func()) []string {
 	c := &cmp{
 		diff:        []string{},
 		buff:        []string{},

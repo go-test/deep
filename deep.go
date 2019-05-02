@@ -58,7 +58,8 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 //
 // If a type has an Equal method, like time.Equal, it is called to check for
 // equality.
-func Compare(a interface{}, b interface{}, callback func()) []string {
+func Compare(a interface{}, b interface{},
+	callback func(ta reflect.Type, tb reflect.Type, va interface{}, vb interface{}, text string)) []string {
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
 	c := &cmp{

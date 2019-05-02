@@ -29,9 +29,6 @@ var (
 	// CompareUnexportedFields causes unexported struct fields, like s in
 	// T{s int}, to be comparsed when true.
 	CompareUnexportedFields = false
-
-	// Callback
-	Callback func() = nil
 )
 
 var (
@@ -49,9 +46,45 @@ type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
+	callback    func()
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
+
+// Compare compares variables a and b, recursing into their structure up to
+// MaxDepth levels deep (if greater than zero), and returns a list of differences,
+// or nil if there are none. Some differences may not be found if an error is
+// also returned.
+//
+// If a type has an Equal method, like time.Equal, it is called to check for
+// equality.
+func Compare(a interface{}, b interface{}, callback func()) []string {
+	aVal := reflect.ValueOf(a)
+	bVal := reflect.ValueOf(b)
+	c := &cmp{
+		diff:        []string{},
+		buff:        []string{},
+		floatFormat: fmt.Sprintf("%%.%df", FloatPrecision),
+		callback:    callback,
+	}
+	if a == nil && b == nil {
+		return nil
+	} else if a == nil && b != nil {
+		c.saveDiff("<nil pointer>", b)
+	} else if a != nil && b == nil {
+		c.saveDiff(a, "<nil pointer>")
+	}
+	if len(c.diff) > 0 {
+		return c.diff
+	}
+
+	c.equals(aVal, bVal, 0)
+	if len(c.diff) > 0 {
+		return c.diff // diffs
+	}
+	return nil // no diffs
+
+}
 
 // Equal compares variables a and b, recursing into their structure up to
 // MaxDepth levels deep (if greater than zero), and returns a list of differences,
@@ -93,8 +126,8 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		return
 	}
 
-	if Callback != nil {
-		Callback()
+	if c.callback != nil {
+		c.callback()
 	}
 
 	// Check if one value is nil, e.g. T{x: *X} and T.x is nil

@@ -46,9 +46,27 @@ type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
+	callback    *func()
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
+
+// Compare compares variables a and b, recursing into their structure up to
+// MaxDepth levels deep (if greater than zero), and returns a list of differences,
+// or nil if there are none. Some differences may not be found if an error is
+// also returned.
+//
+// If a type has an Equal method, like time.Equal, it is called to check for
+// equality.
+func Compare(a interface{}, b interface{}, callback *func()) []string {
+	c := &cmp{
+		diff:        []string{},
+		buff:        []string{},
+		floatFormat: fmt.Sprintf("%%.%df", FloatPrecision),
+		callback:    callback,
+	}
+	return equal(a, b, c)
+}
 
 // Equal compares variables a and b, recursing into their structure up to
 // MaxDepth levels deep (if greater than zero), and returns a list of differences,
@@ -58,13 +76,17 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 // If a type has an Equal method, like time.Equal, it is called to check for
 // equality.
 func Equal(a, b interface{}) []string {
-	aVal := reflect.ValueOf(a)
-	bVal := reflect.ValueOf(b)
 	c := &cmp{
 		diff:        []string{},
 		buff:        []string{},
 		floatFormat: fmt.Sprintf("%%.%df", FloatPrecision),
 	}
+	return equal(a, b, c)
+}
+
+func equal(a interface{}, b interface{}, c *cmp) []string {
+	aVal := reflect.ValueOf(a)
+	bVal := reflect.ValueOf(b)
 	if a == nil && b == nil {
 		return nil
 	} else if a == nil && b != nil {
@@ -81,6 +103,7 @@ func Equal(a, b interface{}) []string {
 		return c.diff // diffs
 	}
 	return nil // no diffs
+
 }
 
 func (c *cmp) equals(a, b reflect.Value, level int) {

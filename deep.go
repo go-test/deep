@@ -46,7 +46,7 @@ type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
-	callback    func(ta reflect.Type, tb reflect.Type, va interface{}, vb interface{}, text string)
+	callback    func(ta reflect.Type, tb reflect.Type, va interface{}, vb interface{}, text string) bool
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
@@ -59,7 +59,7 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 // If a type has an Equal method, like time.Equal, it is called to check for
 // equality.
 func Compare(a interface{}, b interface{},
-	callback func(ta reflect.Type, tb reflect.Type, va interface{}, vb interface{}, text string)) []string {
+	callback func(ta reflect.Type, tb reflect.Type, va interface{}, vb interface{}, text string) bool) []string {
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
 	c := &cmp{
@@ -394,17 +394,22 @@ func (c *cmp) saveDiff(aval, bval interface{}) {
 	if len(c.buff) > 0 {
 		varName := strings.Join(c.buff, ".")
 		diff = fmt.Sprintf("%s: %v != %v", varName, aval, bval)
-		c.diff = append(c.diff, diff)
 	} else {
-		fmt.Sprintf("%v != %v", aval, bval)
+		diff = fmt.Sprintf("%v != %v", aval, bval)
 		c.diff = append(c.diff, diff)
 	}
 
+	addDiff := true
 	if c.callback != nil {
 		aType := reflect.TypeOf(aval)
 		bType := reflect.TypeOf(bval)
-		c.callback(aType, bType, aval, bval, diff)
+		addDiff = c.callback(aType, bType, aval, bval, diff)
 	}
+
+	if addDiff {
+		c.diff = append(c.diff, diff)
+	}
+
 }
 
 func logError(err error) {

@@ -46,7 +46,7 @@ type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
-	callback    func()
+	callback    func(ta reflect.Type, tb reflect.Type, va interface{}, vb interface{}, text string)
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
@@ -124,10 +124,6 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	if MaxDepth > 0 && level > MaxDepth {
 		logError(ErrMaxRecursion)
 		return
-	}
-
-	if c.callback != nil {
-		c.callback()
 	}
 
 	// Check if one value is nil, e.g. T{x: *X} and T.x is nil
@@ -393,11 +389,20 @@ func (c *cmp) pop() {
 }
 
 func (c *cmp) saveDiff(aval, bval interface{}) {
+	var diff string
 	if len(c.buff) > 0 {
 		varName := strings.Join(c.buff, ".")
-		c.diff = append(c.diff, fmt.Sprintf("%s: %v != %v", varName, aval, bval))
+		diff = fmt.Sprintf("%s: %v != %v", varName, aval, bval)
+		c.diff = append(c.diff, diff)
 	} else {
-		c.diff = append(c.diff, fmt.Sprintf("%v != %v", aval, bval))
+		fmt.Sprintf("%v != %v", aval, bval)
+		c.diff = append(c.diff, diff)
+	}
+
+	if c.callback != nil {
+		aType := reflect.TypeOf(aval)
+		bType := reflect.TypeOf(bval)
+		c.callback(aType, bType, aval, bval, diff)
 	}
 }
 

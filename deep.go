@@ -391,10 +391,12 @@ func (c *cmp) pop() {
 
 func (c *cmp) saveDiff(aval, bval interface{}) {
 	var diff string
+	var varName string
 	if len(c.buff) > 0 {
-		varName := strings.Join(c.buff, ".")
+		varName = strings.Join(c.buff, ".")
 		diff = fmt.Sprintf("%s: %v != %v", varName, aval, bval)
 	} else {
+
 		diff = fmt.Sprintf("%v != %v", aval, bval)
 		c.diff = append(c.diff, diff)
 	}

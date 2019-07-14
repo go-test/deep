@@ -891,6 +891,95 @@ func TestError(t *testing.T) {
 	}
 }
 
+func TestErrorWithOtherFields(t *testing.T) {
+	a := errors.New("it broke")
+	b := errors.New("it broke")
+
+	diff := deep.Equal(a, b)
+	if len(diff) != 0 {
+		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
+	}
+
+	b = errors.New("it fell apart")
+	diff = deep.Equal(a, b)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "it broke != it fell apart" {
+		t.Errorf("got '%s', expected 'it broke != it fell apart'", diff[0])
+	}
+
+	// Both errors set
+	type tWithError struct {
+		Error error
+		Other string
+	}
+	t1 := tWithError{
+		Error: a,
+		Other: "ok",
+	}
+	t2 := tWithError{
+		Error: b,
+		Other: "ok",
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "Error: it broke != it fell apart" {
+		t.Errorf("got '%s', expected 'Error: it broke != it fell apart'", diff[0])
+	}
+
+	// Both errors nil
+	t1 = tWithError{
+		Error: nil,
+		Other: "ok",
+	}
+	t2 = tWithError{
+		Error: nil,
+		Other: "ok",
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 0 {
+		t.Log(diff)
+		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
+	}
+
+	// Different Other value
+	t1 = tWithError{
+		Error: nil,
+		Other: "ok",
+	}
+	t2 = tWithError{
+		Error: nil,
+		Other: "nope",
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "Other: ok != nope" {
+		t.Errorf("got '%s', expected 'Other: ok != nope'", diff[0])
+	}
+
+	// Different Other value, same error
+	t1 = tWithError{
+		Error: a,
+		Other: "ok",
+	}
+	t2 = tWithError{
+		Error: a,
+		Other: "nope",
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "Other: ok != nope" {
+		t.Errorf("got '%s', expected 'Other: ok != nope'", diff[0])
+	}
+}
+
 func TestNil(t *testing.T) {
 	type student struct {
 		name string

@@ -121,8 +121,8 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			bString := b.MethodByName("Error").Call(nil)[0].String()
 			if aString != bString {
 				c.saveDiff(aString, bString)
+				return
 			}
-			return
 		}
 	}
 

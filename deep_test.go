@@ -612,6 +612,7 @@ func TestEmptySlice(t *testing.T) {
 	b := []int{}
 	var c []int
 
+	// Non-empty is not equal to empty.
 	diff = deep.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -623,6 +624,7 @@ func TestEmptySlice(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
+	// Empty is not equal to non-empty.
 	diff = deep.Equal(b, a)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -634,6 +636,7 @@ func TestEmptySlice(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
+	// Empty is not equal to nil.
 	diff = deep.Equal(b, c)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -645,6 +648,7 @@ func TestEmptySlice(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
+	// Nil is not equal to empty.
 	diff = deep.Equal(c, b)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -666,16 +670,19 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 	b := []int{}
 	var c []int
 
+	// Empty is equal to nil.
 	diff := deep.Equal(b, c)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
+	// Nil is equal to empty.
 	diff = deep.Equal(c, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
+	// Non-empty is not equal to nil.
 	diff = deep.Equal(a, c)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -687,6 +694,7 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
+	// Nil is not equal to non-empty.
 	diff = deep.Equal(c, a)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -698,6 +706,7 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
+	// Non-empty is not equal to empty.
 	diff = deep.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -709,6 +718,7 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
+	// Empty is not equal to non-empty.
 	diff = deep.Equal(b, a)
 	if diff == nil {
 		t.Fatal("no diff")

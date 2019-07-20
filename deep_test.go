@@ -605,9 +605,12 @@ func TestSlice(t *testing.T) {
 	if diff[0] != "<nil slice> != [1 2 3]" {
 		t.Error("wrong diff:", diff[0])
 	}
+}
 
-	a = a[:1]
-	b = b[:0]
+func TestEmptySlice(t *testing.T) {
+	a := []int{1}
+	b := []int{}
+	var c []int
 
 	diff = deep.Equal(a, b)
 	if diff == nil {

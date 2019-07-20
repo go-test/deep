@@ -276,13 +276,11 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			}
 		}
 	case reflect.Slice:
-		aLen := a.Len()
-		bLen := b.Len()
 		if NilSlicesAreEmpty {
-			if a.IsNil() && bLen != 0 {
+			if a.IsNil() && b.Len() != 0 {
 				c.saveDiff("<nil slice>", b)
 				return
-			} else if aLen != 0 && b.IsNil() {
+			} else if a.Len() != 0 && b.IsNil() {
 				c.saveDiff(a, "<nil slice>")
 				return
 			}
@@ -300,6 +298,8 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			return
 		}
 
+		aLen := a.Len()
+		bLen := b.Len()
 		n := aLen
 		if bLen > aLen {
 			n = bLen

@@ -1055,6 +1055,26 @@ func TestErrorWithOtherFields(t *testing.T) {
 	}
 }
 
+type primKindError string
+
+func (e primKindError) Error() string {
+	return string(e)
+}
+
+func TestErrorPrimitiveKind(t *testing.T) {
+	// The primKindError type above is valid and used by Go, e.g.
+	// url.EscapeError and url.InvalidHostError. Before fixing this bug
+	// (https://github.com/go-test/deep/issues/31), we presumed a and b
+	// were ptr or interface (and not nil), so a.Elem() worked. But when
+	// a/b are primitive kinds, Elem() causes a panic.
+	var err1 primKindError = "abc"
+	var err2 primKindError = "abc"
+	diff := deep.Equal(err1, err2)
+	if len(diff) != 0 {
+		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
+	}
+}
+
 func TestNil(t *testing.T) {
 	type student struct {
 		name string

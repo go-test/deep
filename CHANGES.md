@@ -1,6 +1,6 @@
 # go-test/deep Changelog
 
-## v1.0.3
+## v1.0.3 released 2019-08-18
 
 * Fixed issue #31: panic on typed primitives that implement error interface
 

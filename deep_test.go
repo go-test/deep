@@ -362,6 +362,131 @@ func TestStruct(t *testing.T) {
 	}
 }
 
+func TestStructWithTags(t *testing.T) {
+	type s1 struct {
+		same                    int
+		modified                int
+		sameIgnored             int `deep:"-"`
+		modifiedIgnored         int `deep:"-"`
+		ExportedSame            int
+		ExportedModified        int
+		ExportedSameIgnored     int `deep:"-"`
+		ExportedModifiedIgnored int `deep:"-"`
+	}
+	type s2 struct {
+		s1
+		same                    int
+		modified                int
+		sameIgnored             int `deep:"-"`
+		modifiedIgnored         int `deep:"-"`
+		ExportedSame            int
+		ExportedModified        int
+		ExportedSameIgnored     int `deep:"-"`
+		ExportedModifiedIgnored int `deep:"-"`
+		recurseInline           s1
+		recursePtr              *s2
+	}
+	sa := s2{
+		s1: s1{
+			same:                    0,
+			modified:                1,
+			sameIgnored:             2,
+			modifiedIgnored:         3,
+			ExportedSame:            4,
+			ExportedModified:        5,
+			ExportedSameIgnored:     6,
+			ExportedModifiedIgnored: 7,
+		},
+		same:                    0,
+		modified:                1,
+		sameIgnored:             2,
+		modifiedIgnored:         3,
+		ExportedSame:            4,
+		ExportedModified:        5,
+		ExportedSameIgnored:     6,
+		ExportedModifiedIgnored: 7,
+		recurseInline: s1{
+			same:                    0,
+			modified:                1,
+			sameIgnored:             2,
+			modifiedIgnored:         3,
+			ExportedSame:            4,
+			ExportedModified:        5,
+			ExportedSameIgnored:     6,
+			ExportedModifiedIgnored: 7,
+		},
+		recursePtr: &s2{
+			same:                    0,
+			modified:                1,
+			sameIgnored:             2,
+			modifiedIgnored:         3,
+			ExportedSame:            4,
+			ExportedModified:        5,
+			ExportedSameIgnored:     6,
+			ExportedModifiedIgnored: 7,
+		},
+	}
+	sb := s2{
+		s1: s1{
+			same:                    0,
+			modified:                10,
+			sameIgnored:             2,
+			modifiedIgnored:         30,
+			ExportedSame:            4,
+			ExportedModified:        50,
+			ExportedSameIgnored:     6,
+			ExportedModifiedIgnored: 70,
+		},
+		same:                    0,
+		modified:                10,
+		sameIgnored:             2,
+		modifiedIgnored:         30,
+		ExportedSame:            4,
+		ExportedModified:        50,
+		ExportedSameIgnored:     6,
+		ExportedModifiedIgnored: 70,
+		recurseInline: s1{
+			same:                    0,
+			modified:                10,
+			sameIgnored:             2,
+			modifiedIgnored:         30,
+			ExportedSame:            4,
+			ExportedModified:        50,
+			ExportedSameIgnored:     6,
+			ExportedModifiedIgnored: 70,
+		},
+		recursePtr: &s2{
+			same:                    0,
+			modified:                10,
+			sameIgnored:             2,
+			modifiedIgnored:         30,
+			ExportedSame:            4,
+			ExportedModified:        50,
+			ExportedSameIgnored:     6,
+			ExportedModifiedIgnored: 70,
+		},
+	}
+
+	orig := deep.CompareUnexportedFields
+	deep.CompareUnexportedFields = true
+	diff := deep.Equal(sa, sb)
+	deep.CompareUnexportedFields = orig
+
+	want := []string{
+		"s1.modified: 1 != 10",
+		"s1.ExportedModified: 5 != 50",
+		"modified: 1 != 10",
+		"ExportedModified: 5 != 50",
+		"recurseInline.modified: 1 != 10",
+		"recurseInline.ExportedModified: 5 != 50",
+		"recursePtr.modified: 1 != 10",
+		"recursePtr.ExportedModified: 5 != 50",
+	}
+	if !reflect.DeepEqual(want, diff) {
+		t.Errorf("got %v, want %v", diff, want)
+	}
+}
+
 func TestNestedStruct(t *testing.T) {
 	type s2 struct {
 		Nickname string

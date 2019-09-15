@@ -1,5 +1,9 @@
 # go-test/deep Changelog
 
+## v1.0.4 released 2019-09-15
+
+* Added \`deep:"-"\` structure field tag to ignore field (PR #38) (@flga)
+
 ## v1.0.3 released 2019-08-18
 
 * Fixed issue #31: panic on typed primitives that implement error interface

@@ -9,6 +9,7 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"regexp"
 )
 
 var (
@@ -17,7 +18,7 @@ var (
 	FloatPrecision = 10
 
 	// MaxDiff specifies the maximum number of differences to return.
-	MaxDiff = 10
+	MaxDiff = 10000
 
 	// MaxDepth specifies the maximum levels of a struct to recurse into,
 	// if greater than zero. If zero, there is no limit.
@@ -42,11 +43,20 @@ var (
 	ErrNotHandled = errors.New("cannot compare the reflect.Kind")
 )
 
+//this is used for our json comparison. key = unique value, left = index of left object, right = index of right object.
+type arrayCmp struct {
+	key 	string
+	left	int
+	right	int
+}
+
 type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
 	callback    func(ta reflect.Type, tb reflect.Type, va interface{}, vb interface{}, text string) bool
+	callback2	func(field string) []string
+	callback3	func(log string, end bool)
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
@@ -59,7 +69,9 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 // If a type has an Equal method, like time.Equal, it is called to check for
 // equality.
 func Compare(a interface{}, b interface{},
-	callback func(ta reflect.Type, tb reflect.Type, va interface{}, vb interface{}, text string) bool) []string {
+	callback func(ta reflect.Type, tb reflect.Type, va interface{}, vb interface{}, text string) bool,
+	callback2 func(field string) []string,
+	callback3 func(log string, end bool)) []string {
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
 	c := &cmp{
@@ -67,6 +79,8 @@ func Compare(a interface{}, b interface{},
 		buff:        []string{},
 		floatFormat: fmt.Sprintf("%%.%df", FloatPrecision),
 		callback:    callback,
+		callback2:	 callback2,
+		callback3:	 callback3,
 	}
 	if a == nil && b == nil {
 		return nil
@@ -324,6 +338,132 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			return
 		}
 
+		if c.callback2 != nil {
+			//before we move further, we build our cmap and run c.equals on the correct parts.
+			var (
+				key string
+			)
+			if c.buff != nil {
+				var rgx = regexp.MustCompile(`map\[(.*?)]`)
+				var rs []string
+				for i := len(c.buff)-1; i >= 0; i-- {
+					if rs = rgx.FindStringSubmatch(c.buff[i]); rs != nil {
+						key = rs[1]
+					}
+				}				
+			}
+
+			//see if we can grab our unique key(s)
+			if unique := c.callback2(fmt.Sprintf("%s", key)); unique != nil {
+				var cmap map[string]arrayCmp
+				cmap = make(map[string]arrayCmp)
+				aLen := a.Len()
+				bLen := b.Len()
+				n := aLen
+
+				//first part - iterate over a and fill up cmap. Everything we see here is going to go into cmap with it's unique value as the key
+				//and the cmp structure as a value. The cmp structure will have left filled in as the current index of a.
+				for i := 0; i < n; i++ {
+					var field 	reflect.Value
+					var val 	string
+					obj, ok := getObj(a, i)
+					if !ok {
+						err := fmt.Sprintf("Type error. Files may be different or type is unrecognized. Ending compare.")
+						c.callback3(err, true)
+						return
+					}
+					//get key == unique
+					//build our uniquely named key. unique will be something like ["service_name", "user"]. we will look for each of those fieldnames inside of a[i]
+					//and add the values of those fields to val. ie an object with service_name: cron and user:devtest, our key for cmap will be crondevtest.
+					//TONOTE: order for these loops MATTER. MapKeys() will return keys out of order, which will flip our key name when we don't want it to.
+					//we force it to be in order by looping through our list first.
+					for _, fieldName := range unique {
+						for _, key := range obj.MapKeys() {
+					
+						test := (fmt.Sprintf("%s", key))
+
+							if fieldName == test {
+									field = key
+									val = val + fmt.Sprintf("%s", obj.MapIndex(field))
+									break
+							}
+
+						}
+					}
+
+					comp := &arrayCmp{
+						key: 	val,
+						left:	i,
+						right:	-1,
+					}
+					cmap[val] = *comp
+
+					
+				}
+
+				//loop through b. for each elem in b, check if it's in cmap. if it is, update 'right' in the structure with the correct index. if it is not in cmap,
+				//add it with left = -1. 
+				n = bLen
+				for i := 0; i < n; i++ {
+					var field 	reflect.Value
+					var val 	string
+					obj, ok := getObj(b, i)
+					if !ok {
+						err := fmt.Sprintf("Type error. Files may be different or type is unrecognized. Ending compare.")
+						c.callback3(err, true)
+						return
+					}
+					//get key == unique
+					for _, fieldName := range unique {
+						for _, key := range obj.MapKeys() {
+			
+						test := (fmt.Sprintf("%s", key))
+
+							if fieldName == test {
+									field = key
+									val = val + fmt.Sprintf("%s", obj.MapIndex(field))
+									break
+							}
+
+						}
+					}
+
+					//look inside of cmap for val. if there, add right index to struct. else, make new
+					if comp, ok := cmap[val]; ok {
+						comp.right = i
+						cmap[val] = comp
+					} else {
+						comp := &arrayCmp{
+							key: 	val,
+							left:	-1,
+							right:	i,
+						}
+						cmap[val] = *comp
+					}					
+				}
+
+				//loop through cmap. decide what gets compared and what is confirmed different. we call .equals here on the correct indexes
+				for _, comp := range cmap {
+					if comp.left != -1 && comp.right != -1 {
+						c.push(fmt.Sprintf("slice[%d]", comp.left))
+						c.equals(a.Index(comp.left), b.Index(comp.right), level+1)
+					} else if comp.left != -1 {
+						c.push(fmt.Sprintf("slice[%d]", comp.left))
+						c.saveDiff(a.Index(comp.left), "<no value>")
+					} else {
+						c.push(fmt.Sprintf("slice[%d]", comp.right))
+						c.saveDiff("<no value>", b.Index(comp.right))
+					}
+					c.pop()
+					if len(c.diff) >= MaxDiff {
+						break
+					}
+				}
+				break
+			}
+
+		}
+
 		aLen := a.Len()
 		bLen := b.Len()
 		n := aLen
@@ -389,12 +529,77 @@ func (c *cmp) pop() {
 	}
 }
 
+//this was also heavily modified. we shape the output so it is even more readable for humans and we know exactly what objects are there or not.
 func (c *cmp) saveDiff(aval, bval interface{}) {
 	var diff string
 	var varName string
+	var rgx = regexp.MustCompile(`map\[(.*?)]`)
 	if len(c.buff) > 0 {
 		varName = strings.Join(c.buff, ".")
-		diff = fmt.Sprintf("%s: %v != %v", varName, aval, bval)
+		aString := fmt.Sprintf("%v", aval)
+		bString := fmt.Sprintf("%v", bval)
+		//<no value> is the case where both fields exist, but an item(s) isn't there. ie 3 objects in services vs 5 objects in services.
+		if aString == "<no value>" || bString == "<no value>" {
+			n := len(c.buff)
+			for i := n-1; i >= 0; i-- {
+				if rx := rgx.FindStringSubmatch(c.buff[i]); rx != nil {
+					key := rx[1]
+					var m reflect.Value
+					var output string
+					//we use our callback to find out what is important to this key. this is how we'll tell the user what is missing
+					unique := c.callback2(key)
+					switch aval.(type) {
+					case reflect.Value:
+						m = aval.(reflect.Value).Elem()
+					default:
+						m = bval.(reflect.Value).Elem()
+					}
+					if m.Kind() == reflect.Map {
+						for i, _ := range unique {
+							for _, key := range m.MapKeys() {
+								tmp := fmt.Sprintf("%s", key)
+								if unique[i] == tmp {
+									val := fmt.Sprintf("%v", m.MapIndex(key))
+									output = output + fmt.Sprintf("%s:%s ", unique[i], val)
+									break
+								}
+							}
+						}
+					} else {
+						diff = fmt.Sprintf("%s: %v != %v", varName, aval, bval)
+						c.callback3("Type Error. Difference " + diff + "not saved.", true)
+					}
+					if output == "" {
+						output = output + fmt.Sprintf("%v", m)
+					}
+					if aString == "<no value>" {
+						diff = fmt.Sprintf("%s: New item in %s with unique field(s): %s", varName, key, output)
+					} else {
+						diff = fmt.Sprintf("%s: Missing item in %s with unique field(s): %s", varName, key, output)
+					}
+					break
+				}
+			}
+		//<does not have key> is seen when one side is missing an entire field. ie 'a' has 'services' but 'b' has no 'services' field at all.
+		} else if aString == "<does not have key>" || bString == "<does not have key>" {
+			var output string
+			for i, key := range c.buff {
+				//we want to explain exactly what's missing; this will tell the user that the section monitoring_info -> nics is missing.
+				if rx := rgx.FindStringSubmatch(key); rx != nil {
+					if i != 0 {
+						output = output + fmt.Sprintf(" -> ")
+					}
+					output = output + fmt.Sprintf(rx[1])
+				}
+			}
+			if aString == "does not have key>" {
+				diff = fmt.Sprintf("%s: New field with data: %s", varName, output)
+			} else {
+				diff = fmt.Sprintf("%s: Missing field: %s", varName, output)
+			}
+		} else {
+			diff = fmt.Sprintf("%s: %v != %v", varName, aval, bval)
+		}
 	} else {
 
 		diff = fmt.Sprintf("%v != %v", aval, bval)
@@ -418,4 +623,17 @@ func logError(err error) {
 	if LogErrors {
 		log.Println(err)
 	}
+}
+
+func getObj(a reflect.Value, i int) (obj reflect.Value, ok bool) {
+	obj = a.Index(i).Elem()
+	defer func() {
+		if r := recover(); r != nil {
+			//we panicked because of types
+			ok = false
+		} else {
+			ok = obj.Kind() == reflect.Map
+		}
+	}()
+	return obj, ok
 }

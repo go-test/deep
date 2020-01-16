@@ -1,5 +1,9 @@
 # go-test/deep Changelog
 
+## v1.0.5 released 2020-01-16
+
+* Added `NilSlicesAreEmpty` variable which causes a nil slice to be equal to an empty slice (PR #27) (@Anaminus)
+
 ## v1.0.4 released 2019-09-15
 
 * Added \`deep:"-"\` structure field tag to ignore field (PR #38) (@flga)

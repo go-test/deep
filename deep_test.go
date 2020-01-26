@@ -1149,6 +1149,11 @@ func TestInterface3(t *testing.T) {
 	}
 }
 
+type tWithError struct {
+	Error error
+	Other string
+}
+
 func TestError(t *testing.T) {
 	a := errors.New("it broke")
 	b := errors.New("it broke")
@@ -1168,9 +1173,6 @@ func TestError(t *testing.T) {
 	}
 
 	// Both errors set
-	type tWithError struct {
-		Error error
-	}
 	t1 := tWithError{
 		Error: a,
 	}
@@ -1234,10 +1236,6 @@ func TestErrorWithOtherFields(t *testing.T) {
 	}
 
 	// Both errors set
-	type tWithError struct {
-		Error error
-		Other string
-	}
 	t1 := tWithError{
 		Error: a,
 		Other: "ok",
@@ -1320,6 +1318,35 @@ func TestErrorPrimitiveKind(t *testing.T) {
 	var err2 primKindError = "abc"
 	diff := deep.Equal(err1, err2)
 	if len(diff) != 0 {
+		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
+	}
+}
+
+func TestErrorDifferentTypesSameString(t *testing.T) {
+	// https://github.com/go-test/deep/issues/41
+	var err1 primKindError = "abc"
+	var err2 error = fmt.Errorf("abc")
+	t1 := tWithError{
+		Error: err1,
+	}
+	t2 := tWithError{
+		Error: err2,
+	}
+	diff := deep.Equal(t1, t2)
+	if len(diff) != 0 {
+		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
+	}
+
+	t1 = tWithError{
+		Error: err1,
+		Other: "t1",
+	}
+	t2 = tWithError{
+		Error: err2,
+		Other: "t2",
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
 		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
 	}
 }

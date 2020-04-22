@@ -931,6 +931,76 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 	}
 }
 
+func TestNilMapsAreEmpty(t *testing.T) {
+	defaultNilMapsAreEmpty := deep.NilSlicesAreEmpty
+	deep.NilMapsAreEmpty = true
+	defer func() { deep.NilSlicesAreEmpty = defaultNilMapsAreEmpty }()
+
+	a := map[int]int{1: 1}
+	b := map[int]int{}
+	var c map[int]int
+
+	// Empty is equal to nil.
+	diff := deep.Equal(b, c)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	// Nil is equal to empty.
+	diff = deep.Equal(c, b)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	// Non-empty is not equal to nil.
+	diff = deep.Equal(a, c)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "map[1:1] != <nil map>" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	// Nil is not equal to non-empty.
+	diff = deep.Equal(c, a)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "<nil map> != map[1:1]" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	// Non-empty is not equal to empty.
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "map[1]: 1 != <does not have key>" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	// Empty is not equal to non-empty.
+	diff = deep.Equal(b, a)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "map[1]: <does not have key> != 1" {
+		t.Error("wrong diff:", diff[0])
+	}
+}
+
 func TestNilInterface(t *testing.T) {
 	type T struct{ i int }
 

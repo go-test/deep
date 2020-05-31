@@ -346,8 +346,13 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	/////////////////////////////////////////////////////////////////////
 
 	case reflect.Float32, reflect.Float64:
-		// Avoid 0.04147685731961082 != 0.041476857319611
-		// 6 decimal places is close enough
+		// Round floats to FloatPrecision decimal places to compare with
+		// user-defined precision. As is commonly know, floats have "imprecision"
+		// such that 0.1 becomes 0.100000001490116119384765625. This cannot
+		// be avoided; it can only be handled. Issue 30 suggested that floats
+		// be compared using an epsilon: equal = |a-b| < epsilon.
+		// In many cases the result is the same, but I think epsilon is a little
+		// less clear for users to reason about. See issue 30 for details.
 		aval := fmt.Sprintf(c.floatFormat, a.Float())
 		bval := fmt.Sprintf(c.floatFormat, b.Float())
 		if aval != bval {

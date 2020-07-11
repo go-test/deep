@@ -112,7 +112,18 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	aType := a.Type()
 	bType := b.Type()
 	if aType != bType {
-		c.saveDiff(aType, bType)
+		// Built-in types don't have a name, so don't report [3]int != [2]int as " != "
+		if aType.Name() == "" || aType.Name() != bType.Name() {
+			c.saveDiff(aType, bType)
+		} else {
+			// Type names can be the same, e.g. pkg/v1.Error and pkg/v2.Error
+			// are both exported as pkg, so unless we include the full pkg path
+			// the diff will be "pkg.Error != pkg.Error"
+			// https://github.com/go-test/deep/issues/39
+			aFullType := aType.PkgPath() + "." + aType.Name()
+			bFullType := bType.PkgPath() + "." + bType.Name()
+			c.saveDiff(aFullType, bFullType)
+		}
 		logError(ErrTypeMismatch)
 		return
 	}

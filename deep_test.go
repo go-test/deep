@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	v1 "github.com/go-test/deep/test/v1"
+	v2 "github.com/go-test/deep/test/v2"
 )
 
 func TestString(t *testing.T) {
@@ -133,6 +135,21 @@ func TestTypeMismatch(t *testing.T) {
 		t.Error("too many diff:", diff)
 	}
 	if diff[0] != "deep_test.T1 != deep_test.T2" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	// Same pkg name but differnet full paths
+	// https://github.com/go-test/deep/issues/39
+	err1 := v1.Error{}
+	err2 := v2.Error{}
+	diff = deep.Equal(err1, err2)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "github.com/go-test/deep/test/v1.Error != github.com/go-test/deep/test/v2.Error" {
 		t.Error("wrong diff:", diff[0])
 	}
 }

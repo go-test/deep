@@ -10,4 +10,4 @@ before_install:
   - go get golang.org/x/tools/cover
 
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-ci
+  - $HOME/gopath/bin/goveralls -service=travis-ci -package github.com/go-test/deep

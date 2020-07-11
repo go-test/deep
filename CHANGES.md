@@ -1,5 +1,9 @@
 # go-test/deep Changelog
 
+## v1.0.7 released 2020-07-11
+
+* Fixed issue #39: Confusing diff when comparing distinct types with the same name (PR #44)
+
 ## v1.0.6 released 2020-04-21
 
 * Added `NilMapsAreEmpty` variable which causes a nil map to equal an empty map (PR #43) (@yalegko)

@@ -1304,21 +1304,7 @@ func TestError(t *testing.T) {
 
 func TestErrorWithOtherFields(t *testing.T) {
 	a := errors.New("it broke")
-	b := errors.New("it broke")
-
-	diff := deep.Equal(a, b)
-	if len(diff) != 0 {
-		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
-	}
-
-	b = errors.New("it fell apart")
-	diff = deep.Equal(a, b)
-	if len(diff) != 1 {
-		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
-	}
-	if diff[0] != "it broke != it fell apart" {
-		t.Errorf("got '%s', expected 'it broke != it fell apart'", diff[0])
-	}
+	b := errors.New("it fell apart")
 
 	// Both errors set
 	type tWithError struct {
@@ -1333,7 +1319,7 @@ func TestErrorWithOtherFields(t *testing.T) {
 		Error: b,
 		Other: "ok",
 	}
-	diff = deep.Equal(t1, t2)
+	diff := deep.Equal(t1, t2)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1409,6 +1395,25 @@ func TestErrorPrimitiveKind(t *testing.T) {
 	if len(diff) != 0 {
 		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
 	}
+
+	err2 = "def"
+	diff = deep.Equal(err1, err2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+}
+
+func TestErrorUnexported(t *testing.T) {
+	// https://github.com/go-test/deep/issues/45
+	type foo struct {
+		bar error
+	}
+	defaultCompareUnexportedFields := deep.CompareUnexportedFields
+	deep.CompareUnexportedFields = true
+	defer func() { deep.CompareUnexportedFields = defaultCompareUnexportedFields }()
+	e1 := foo{bar: fmt.Errorf("error")}
+	e2 := foo{bar: fmt.Errorf("error")}
+	deep.Equal(e1, e2)
 }
 
 func TestNil(t *testing.T) {

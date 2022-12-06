@@ -27,7 +27,9 @@ var (
 	LogErrors = false
 
 	// CompareUnexportedFields causes unexported struct fields, like s in
-	// T{s int}, to be compared when true.
+	// T{s int}, to be compared when true. This does not work for comparing
+	// error or Time types on unexported fields because methods on unexported
+	// fields cannot be called.
 	CompareUnexportedFields = false
 
 	// NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
@@ -137,18 +139,23 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	bElem := bKind == reflect.Ptr || bKind == reflect.Interface
 
 	// If both types implement the error interface, compare the error strings.
-	// This must be done before dereferencing because the interface is on a
-	// pointer receiver. Re https://github.com/go-test/deep/issues/31, a/b might
-	// be primitive kinds; see TestErrorPrimitiveKind.
-	if aType.Implements(errorType) && bType.Implements(errorType) {
-		if (!aElem || !a.IsNil()) && (!bElem || !b.IsNil()) {
-			aString := a.MethodByName("Error").Call(nil)[0].String()
-			bString := b.MethodByName("Error").Call(nil)[0].String()
-			if aString != bString {
-				c.saveDiff(aString, bString)
-				return
-			}
+	// This must be done before dereferencing because errors.New() returns a
+	// pointer to a struct that implements the interface:
+	//   func (e *errorString) Error() string {
+	// And we check CanInterface as a hack to make sure the underlying method
+	// is callable because https://github.com/golang/go/issues/32438
+	// Issues:
+	//   https://github.com/go-test/deep/issues/31
+	//   https://github.com/go-test/deep/issues/45
+	if (aType.Implements(errorType) && bType.Implements(errorType)) &&
+		((!aElem || !a.IsNil()) && (!bElem || !b.IsNil())) &&
+		(a.CanInterface() && b.CanInterface()) {
+		aString := a.MethodByName("Error").Call(nil)[0].String()
+		bString := b.MethodByName("Error").Call(nil)[0].String()
+		if aString != bString {
+			c.saveDiff(aString, bString)
 		}
+		return
 	}
 
 	// Dereference pointers and interface{}

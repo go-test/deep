@@ -27,7 +27,9 @@ var (
 	LogErrors = false
 
 	// CompareUnexportedFields causes unexported struct fields, like s in
-	// T{s int}, to be compared when true.
+	// T{s int}, to be compared when true. This does not work for comparing
+	// error or Time types on unexported fields because methods on unexported
+	// fields cannot be called.
 	CompareUnexportedFields = false
 
 	// NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.

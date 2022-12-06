@@ -1408,7 +1408,9 @@ func TestErrorUnexported(t *testing.T) {
 	type foo struct {
 		bar error
 	}
+	defaultCompareUnexportedFields := deep.CompareUnexportedFields
 	deep.CompareUnexportedFields = true
+	defer func() { deep.CompareUnexportedFields = defaultCompareUnexportedFields }()
 	e1 := foo{bar: fmt.Errorf("error")}
 	e2 := foo{bar: fmt.Errorf("error")}
 	deep.Equal(e1, e2)

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/go-test/deep"
 	v1 "github.com/go-test/deep/test/v1"
@@ -311,8 +312,14 @@ func TestMaxDiff(t *testing.T) {
 }
 
 func TestNotHandled(t *testing.T) {
-	a := func(int) {}
-	b := func(int) {}
+	// UnsafePointer is pretty much the only kind not handled now
+	v := []int{1}
+	a := unsafe.Pointer(&v)
+	b := unsafe.Pointer(&v)
+	// UnsafePointer added in Go 1.88. Use these lines once this pkg
+	// no longer supports Go 1.17.
+	//a := reflect.ValueOf(v).UnsafePointer()
+	//b := reflect.ValueOf(v).UnsafePointer()
 	diff := deep.Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("got diffs:", diff)
@@ -1435,5 +1442,56 @@ func TestNil(t *testing.T) {
 	diff = deep.Equal(someNilThing, someNilThing)
 	if diff != nil {
 		t.Error("Nil value to comparison should not be equal")
+	}
+}
+
+var testFunc = func() {}
+
+func TestFunc(t *testing.T) {
+	// https://github.com/go-test/deep/issues/46
+	type TestStruct struct {
+		Function func()
+	}
+	t1 := TestStruct{
+		Function: testFunc,
+	}
+	t2 := TestStruct{
+		Function: testFunc,
+	}
+
+	// CompareFunctions is off by default, so this should report no diff:
+	diff := deep.Equal(t1, t2)
+	if len(diff) != 0 {
+		t.Fatalf("expected 0 diff when CompareFunctions=false, got %d: %s", len(diff), diff)
+	}
+
+	deep.CompareFunctions = true
+	defer func() { deep.CompareFunctions = false }()
+
+	// Two funcs are not equal (even if they're the same func)
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "Function: func != func" {
+		t.Errorf("got '%s', expected 'Function: func != func'", diff[0])
+	}
+
+	// One func nil, the other set: not equal
+	t1.Function = nil
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "Function: nil func != func" {
+		t.Errorf("got '%s', expected 'Function: nil func != func'", diff[0])
+	}
+
+	// Two nil funcs are equal
+	t1.Function = nil
+	t2.Function = nil
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 0 {
+		t.Errorf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
 }

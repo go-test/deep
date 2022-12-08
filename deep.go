@@ -32,6 +32,12 @@ var (
 	// fields cannot be called.
 	CompareUnexportedFields = false
 
+	// CompareFunctions compares functions the same as reflect.DeepEqual:
+	// only two nil functions are equal. Every other combination is not equal.
+	// This is disabled by default because previous versions of this package
+	// ignored functions. Enabling it can possibly report new diffs.
+	CompareFunctions = false
+
 	// NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
 	NilSlicesAreEmpty = false
 
@@ -392,7 +398,19 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		if a.String() != b.String() {
 			c.saveDiff(a.String(), b.String())
 		}
-
+	case reflect.Func:
+		if CompareFunctions {
+			if !a.IsNil() || !b.IsNil() {
+				aVal, bVal := "nil func", "nil func"
+				if !a.IsNil() {
+					aVal = "func"
+				}
+				if !b.IsNil() {
+					bVal = "func"
+				}
+				c.saveDiff(aVal, bVal)
+			}
+		}
 	default:
 		logError(ErrNotHandled)
 	}

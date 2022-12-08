@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/go-test/deep"
 	v1 "github.com/go-test/deep/test/v1"
@@ -313,8 +314,12 @@ func TestMaxDiff(t *testing.T) {
 func TestNotHandled(t *testing.T) {
 	// UnsafePointer is pretty much the only kind not handled now
 	v := []int{1}
-	a := reflect.ValueOf(v).UnsafePointer()
-	b := reflect.ValueOf(v).UnsafePointer()
+	a := unsafe.Pointer(&v)
+	b := unsafe.Pointer(&v)
+	// UnsafePointer added in Go 1.88. Use these lines once this pkg
+	// no longer supports Go 1.17.
+	//a := reflect.ValueOf(v).UnsafePointer()
+	//b := reflect.ValueOf(v).UnsafePointer()
 	diff := deep.Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("got diffs:", diff)

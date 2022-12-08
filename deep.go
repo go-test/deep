@@ -493,16 +493,6 @@ func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[interface{}]int, 
 		}
 		delete(am, v)
 		delete(bm, v)
-
-		/*else {
-			c.push(fmt.Sprintf("(unordered) slice[]=%v: value count", v))
-				c.saveDiff(fmt.Sprintf("%d", aCount), "<no value>")
-			} else {
-				c.saveDiff("<no value>", fmt.Sprintf("%d occurrences", bCount))
-			}
-			c.pop()
-		}
-		*/
 	}
 }
 

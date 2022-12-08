@@ -1495,3 +1495,67 @@ func TestFunc(t *testing.T) {
 		t.Errorf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
 }
+
+func TestSliceOrderString(t *testing.T) {
+	// https://github.com/go-test/deep/issues/28
+
+	// These are equal if we ignore order
+	a := []string{"foo", "bar"}
+	b := []string{"bar", "foo"}
+	diff := deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	if len(diff) != 0 {
+		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
+	}
+
+	// Equal with dupes
+	a = []string{"foo", "foo", "bar"}
+	b = []string{"bar", "foo", "foo"}
+	diff = deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	if len(diff) != 0 {
+		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
+	}
+
+	// NOT equal with dupes
+	a = []string{"foo", "foo", "bar"}
+	b = []string{"bar", "bar", "foo"}
+	diff = deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	if len(diff) != 2 {
+		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
+	}
+	m1 := "(unordered) slice[]=foo: value count: 2 != 1"
+	m2 := "(unordered) slice[]=bar: value count: 1 != 2"
+	if diff[0] != m1 && diff[0] != m2 {
+		t.Errorf("got %s, expected '%s' or '%s'", diff[0], m1, m2)
+	}
+	if diff[1] != m1 && diff[1] != m2 {
+		t.Errorf("got %s, expected '%s' or '%s'", diff[1], m1, m2)
+	}
+
+	// NOT equal with one missing
+	a = []string{"foo", "bar"}
+	b = []string{"bar", "foo", "gone"}
+	diff = deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	if len(diff) != 1 {
+		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "(unordered) slice[]=gone: value count: 0 != 1" {
+		t.Errorf("got %s, expected ''", diff[0])
+	}
+
+	// NOT equal at all
+	a = []string{"foo", "bar"}
+	b = []string{"x"}
+	diff = deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	if len(diff) != 3 {
+		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "(unordered) slice[]=foo: value count: 1 != 0" {
+		t.Errorf("got %s, expected '(unordered) slice[]=foo: value count: 1 != 0", diff[0])
+	}
+	if diff[1] != "(unordered) slice[]=bar: value count: 1 != 0" {
+		t.Errorf("got %s, expected '(unordered) slice[]=bar: value count: 1 != 0'", diff[1])
+	}
+	if diff[2] != "(unordered) slice[]=x: value count: 0 != 1" {
+		t.Errorf("got %s, expected '(unordered) slice[]=x: value count: 0 != 1'", diff[2])
+	}
+}

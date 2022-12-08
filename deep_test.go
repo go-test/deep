@@ -310,6 +310,17 @@ func TestMaxDiff(t *testing.T) {
 	}
 }
 
+func TestNotHandled(t *testing.T) {
+	// UnsafePointer is pretty much the only kind not handled now
+	v := []int{1}
+	a := reflect.ValueOf(v).UnsafePointer()
+	b := reflect.ValueOf(v).UnsafePointer()
+	diff := deep.Equal(a, b)
+	if len(diff) > 0 {
+		t.Error("got diffs:", diff)
+	}
+}
+
 func TestStruct(t *testing.T) {
 	type s1 struct {
 		id     int

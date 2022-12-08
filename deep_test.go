@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 	"unsafe"
@@ -1549,11 +1550,12 @@ func TestSliceOrderString(t *testing.T) {
 	if len(diff) != 3 {
 		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
 	}
-	if diff[0] != "(unordered) slice[]=foo: value count: 1 != 0" {
-		t.Errorf("got %s, expected '(unordered) slice[]=foo: value count: 1 != 0", diff[0])
+	sort.Strings(diff)
+	if diff[0] != "(unordered) slice[]=bar: value count: 1 != 0" {
+		t.Errorf("got %s, expected '(unordered) slice[]=bar: value count: 1 != 0'", diff[0])
 	}
-	if diff[1] != "(unordered) slice[]=bar: value count: 1 != 0" {
-		t.Errorf("got %s, expected '(unordered) slice[]=bar: value count: 1 != 0'", diff[1])
+	if diff[1] != "(unordered) slice[]=foo: value count: 1 != 0" {
+		t.Errorf("got %s, expected '(unordered) slice[]=foo: value count: 1 != 0", diff[1])
 	}
 	if diff[2] != "(unordered) slice[]=x: value count: 0 != 1" {
 		t.Errorf("got %s, expected '(unordered) slice[]=x: value count: 0 != 1'", diff[2])

@@ -61,10 +61,11 @@ const (
 	// pass it to Equal; if you do, it does nothing.
 	FLAG_NONE byte = iota
 
-	// FLAG_IGNORE_SLICE_ORDER causes Equal to ignore slice order and, instead,
-	// compare value counts. For example, []{1, 2} and []{2, 1} are equal
-	// because each value has the same count. But []{1, 2, 2} and []{1, 2}
-	// are not equal because the first slice has two occurrences of value 2.
+	// FLAG_IGNORE_SLICE_ORDER causes Equal to ignore slice order so that
+	// []int{1, 2} and []int{2, 1} are equal. Only slices of primitive scalars
+	// like numbers and strings are supported. Slices of complex types,
+	// like []T where T is a struct, are undefined because Equal does not
+	// recurse into the slice value when this flag is enabled.
 	FLAG_IGNORE_SLICE_ORDER
 )
 

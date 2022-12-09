@@ -1561,3 +1561,23 @@ func TestSliceOrderString(t *testing.T) {
 		t.Errorf("got %s, expected '(unordered) slice[]=x: value count: 0 != 1'", diff[2])
 	}
 }
+
+func TestSliceOrderStruct(t *testing.T) {
+	// https://github.com/go-test/deep/issues/28
+	// This is NOT supported but Go is so wonderful that it just happens to work.
+	// But again: not supported. So if this test starts to fail or be a problem,
+	// it can and should be removed becuase the docs say it's not supported.
+	type T struct{ i int }
+	a := []T{
+		{i: 1},
+		{i: 2},
+	}
+	b := []T{
+		{i: 2},
+		{i: 1},
+	}
+	diff := deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	if len(diff) != 0 {
+		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
+	}
+}

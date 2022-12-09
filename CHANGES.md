@@ -1,5 +1,11 @@
 # go-test/deep Changelog
 
+## v1.1.0 released 2022-12-09
+
+* Add optional flags: `Equal(a, b, flags..)` and `FLAG_IGNORE_SLICE_ORDER` (issue #28, PR #56) (@alenkacz)
+
+---
+
 ## v1.0.9 released 2022-12-09
 
 * Fixed issue #45: Panic when comparing errors in unexported fields (PR #54) (@seveas)

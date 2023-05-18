@@ -957,9 +957,9 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 }
 
 func TestNilMapsAreEmpty(t *testing.T) {
-	defaultNilMapsAreEmpty := deep.NilSlicesAreEmpty
+	defaultNilMapsAreEmpty := deep.NilMapsAreEmpty
 	deep.NilMapsAreEmpty = true
-	defer func() { deep.NilSlicesAreEmpty = defaultNilMapsAreEmpty }()
+	defer func() { deep.NilMapsAreEmpty = defaultNilMapsAreEmpty }()
 
 	a := map[int]int{1: 1}
 	b := map[int]int{}

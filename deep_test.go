@@ -1581,3 +1581,27 @@ func TestSliceOrderStruct(t *testing.T) {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
 }
+
+func TestNilPointersAreZero(t *testing.T) {
+	defaultNilPointersAreZero := deep.NilPointersAreZero
+	deep.NilPointersAreZero = true
+	defer func() { deep.NilPointersAreZero = defaultNilPointersAreZero }()
+
+	type T struct {
+		S *string
+	}
+
+	a := T{S: nil}
+	b := T{S: new(string)}
+
+	diff := deep.Equal(a, b)
+	if len(diff) != 0 {
+		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
+	}
+
+	*b.S = "hello"
+	diff = deep.Equal(a, b)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+}

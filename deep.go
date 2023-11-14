@@ -43,6 +43,9 @@ var (
 
 	// NilMapsAreEmpty causes a nil map to be equal to an empty map.
 	NilMapsAreEmpty = false
+
+	// NilPointersAreZero causes a nil pointer to be equal to a zero value.
+	NilPointersAreZero = false
 )
 
 var (
@@ -186,9 +189,15 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	if aElem || bElem {
 		if aElem {
 			a = a.Elem()
+			if NilPointersAreZero && !a.IsValid() {
+				a = reflect.Zero(aType.Elem())
+			}
 		}
 		if bElem {
 			b = b.Elem()
+			if NilPointersAreZero && !b.IsValid() {
+				b = reflect.Zero(bType.Elem())
+			}
 		}
 		c.equals(a, b, level+1)
 		return

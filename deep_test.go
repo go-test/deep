@@ -1604,4 +1604,12 @@ func TestNilPointersAreZero(t *testing.T) {
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
+
+	a.S = new(string)
+	*a.S = "hi again"
+	b.S = nil
+	diff = deep.Equal(a, b)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
 }

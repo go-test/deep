@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -76,7 +77,7 @@ type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
-	flag        map[byte]bool
+	conf        Differ
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
@@ -92,38 +93,32 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
 func Equal(a, b interface{}, flags ...interface{}) []string {
-	aVal := reflect.ValueOf(a)
-	bVal := reflect.ValueOf(b)
-	c := &cmp{
-		diff:        []string{},
-		buff:        []string{},
-		floatFormat: fmt.Sprintf("%%.%df", FloatPrecision),
-		flag:        map[byte]bool{},
-	}
-	for i := range flags {
-		c.flag[flags[i].(byte)] = true
-	}
-	if a == nil && b == nil {
-		return nil
-	} else if a == nil && b != nil {
-		c.saveDiff("<nil pointer>", b)
-	} else if a != nil && b == nil {
-		c.saveDiff(a, "<nil pointer>")
-	}
-	if len(c.diff) > 0 {
-		return c.diff
-	}
+	// error ignored to preserve API
+	differ, _ := New(
+		WithCompareFunctions(CompareFunctions),
+		WithCompareUnexportedFields(CompareUnexportedFields),
+		WithFloatPrecision(FloatPrecision),
+		WithIgnoreSliceOrder(hasFlag(flags, FLAG_IGNORE_SLICE_ORDER)),
+		WithLogErrors(LogErrors),
+		WithMaxDepth(MaxDepth),
+		WithMaxDiff(MaxDiff),
+		WithNilMapsAreEmpty(NilMapsAreEmpty),
+		WithNilPointersAreZero(NilPointersAreZero),
+		WithNilSlicesAreEmpty(NilSlicesAreEmpty),
+	)
+	return differ.Compare(a, b)
+}
 
-	c.equals(aVal, bVal, 0)
-	if len(c.diff) > 0 {
-		return c.diff // diffs
-	}
-	return nil // no diffs
+func hasFlag(flags []interface{}, flag byte) bool {
+	return slices.ContainsFunc(flags, func(i interface{}) bool {
+		v, ok := i.(byte)
+		return ok && v == flag
+	})
 }
 
 func (c *cmp) equals(a, b reflect.Value, level int) {
-	if MaxDepth > 0 && level > MaxDepth {
-		logError(ErrMaxRecursion)
+	if c.conf.maxDepth > 0 && level > c.conf.maxDepth {
+		c.logError(ErrMaxRecursion)
 		return
 	}
 
@@ -153,7 +148,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			bFullType := bType.PkgPath() + "." + bType.Name()
 			c.saveDiff(aFullType, bFullType)
 		}
-		logError(ErrTypeMismatch)
+		c.logError(ErrTypeMismatch)
 		return
 	}
 
@@ -193,10 +188,10 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		if bElem {
 			b = b.Elem()
 		}
-		if aElem && NilPointersAreZero && !a.IsValid() && b.IsValid() {
+		if aElem && c.conf.nilPointersAreZero && !a.IsValid() && b.IsValid() {
 			a = reflect.Zero(b.Type())
 		}
-		if bElem && NilPointersAreZero && !b.IsValid() && a.IsValid() {
+		if bElem && c.conf.nilPointersAreZero && !b.IsValid() && a.IsValid() {
 			b = reflect.Zero(a.Type())
 		}
 		c.equals(a, b, level+1)
@@ -244,7 +239,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		}
 
 		for i := 0; i < a.NumField(); i++ {
-			if aType.Field(i).PkgPath != "" && !CompareUnexportedFields {
+			if aType.Field(i).PkgPath != "" && !c.conf.compareUnexportedFields {
 				continue // skip unexported field, e.g. s in type T struct {s string}
 			}
 
@@ -264,7 +259,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 			c.pop() // pop field name from buff
 
-			if len(c.diff) >= MaxDiff {
+			if len(c.diff) >= c.conf.maxDiff {
 				break
 			}
 		}
@@ -285,7 +280,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		*/
 
 		if a.IsNil() || b.IsNil() {
-			if NilMapsAreEmpty {
+			if c.conf.nilMapsAreEmpty {
 				if a.IsNil() && b.Len() != 0 {
 					c.saveDiff("<nil map>", b)
 					return
@@ -320,7 +315,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 			c.pop()
 
-			if len(c.diff) >= MaxDiff {
+			if len(c.diff) >= c.conf.maxDiff {
 				return
 			}
 		}
@@ -333,7 +328,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.push(fmt.Sprintf("map[%v]", key))
 			c.saveDiff("<does not have key>", b.MapIndex(key))
 			c.pop()
-			if len(c.diff) >= MaxDiff {
+			if len(c.diff) >= c.conf.maxDiff {
 				return
 			}
 		}
@@ -343,12 +338,12 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.push(fmt.Sprintf("array[%d]", i))
 			c.equals(a.Index(i), b.Index(i), level+1)
 			c.pop()
-			if len(c.diff) >= MaxDiff {
+			if len(c.diff) >= c.conf.maxDiff {
 				break
 			}
 		}
 	case reflect.Slice:
-		if NilSlicesAreEmpty {
+		if c.conf.nilSlicesAreEmpty {
 			if a.IsNil() && b.Len() != 0 {
 				c.saveDiff("<nil slice>", b)
 				return
@@ -378,7 +373,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			return
 		}
 
-		if c.flag[FLAG_IGNORE_SLICE_ORDER] {
+		if c.conf.ignoreSliceOrder {
 			// Compare slices by value and value count; ignore order.
 			// Value equality is impliclity established by the maps:
 			// any value v1 will hash to the same map value if it's equal
@@ -411,7 +406,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 					c.saveDiff("<no value>", b.Index(i))
 				}
 				c.pop()
-				if len(c.diff) >= MaxDiff {
+				if len(c.diff) >= c.conf.maxDiff {
 					break
 				}
 			}
@@ -451,7 +446,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.saveDiff(a.String(), b.String())
 		}
 	case reflect.Func:
-		if CompareFunctions {
+		if c.conf.compareFunctions {
 			if !a.IsNil() || !b.IsNil() {
 				aVal, bVal := "nil func", "nil func"
 				if !a.IsNil() {
@@ -464,7 +459,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			}
 		}
 	default:
-		logError(ErrNotHandled)
+		c.logError(ErrNotHandled)
 	}
 }
 
@@ -506,8 +501,8 @@ func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[interface{}]int, 
 	}
 }
 
-func logError(err error) {
-	if LogErrors {
+func (c *cmp) logError(err error) {
+	if c.conf.logErrors {
 		log.Println(err)
 	}
 }

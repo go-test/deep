@@ -380,10 +380,10 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 		if c.flag[FLAG_IGNORE_SLICE_ORDER] {
 			// Compare slices by value and value count; ignore order.
-			// Value equality is impliclity established by the maps:
+			// Value equality is implicitly established by the maps:
 			// any value v1 will hash to the same map value if it's equal
-			// to another value v2. Then equality is determiend by value
-			// count: presuming v1==v2, then the slics are equal if there
+			// to another value v2. Then equality is determined by value
+			// count: presuming v1==v2, then the slices are equal if there
 			// are equal numbers of v1 in each slice.
 			am := map[interface{}]int{}
 			for i := 0; i < a.Len(); i++ {

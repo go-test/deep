@@ -140,7 +140,7 @@ func TestTypeMismatch(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
-	// Same pkg name but differnet full paths
+	// Same pkg name but different full paths
 	// https://github.com/go-test/deep/issues/39
 	err1 := v1.Error{}
 	err2 := v2.Error{}
@@ -1099,7 +1099,7 @@ func TestPointer(t *testing.T) {
 }
 
 func TestTime(t *testing.T) {
-	// In an interable kind (i.e. a struct)
+	// In an iterable kind (i.e. a struct)
 	type sTime struct {
 		T time.Time
 	}
@@ -1566,7 +1566,7 @@ func TestSliceOrderStruct(t *testing.T) {
 	// https://github.com/go-test/deep/issues/28
 	// This is NOT supported but Go is so wonderful that it just happens to work.
 	// But again: not supported. So if this test starts to fail or be a problem,
-	// it can and should be removed becuase the docs say it's not supported.
+	// it can and should be removed because the docs say it's not supported.
 	type T struct{ i int }
 	a := []T{
 		{i: 1},

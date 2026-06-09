@@ -59,6 +59,6 @@
 
 * Fixed issue #12: Arrays are not properly compared (@samlitowitz)
 
-## v1.0.0 releaesd 2017-10-27 
+## v1.0.0 released 2017-10-27
 
 * First release

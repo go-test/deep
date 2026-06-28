@@ -4,7 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/go-test/deep/badge.svg?branch=master)](https://coveralls.io/github/go-test/deep?branch=master)
 [![Go Reference](https://pkg.go.dev/badge/github.com/go-test/deep.svg)](https://pkg.go.dev/github.com/go-test/deep)
 
-This package provides a single function: `deep.Equal`. It's like [reflect.DeepEqual](http://golang.org/pkg/reflect/#DeepEqual) but much friendlier to humans (or any sentient being) for two reason:
+This package provides a single function: `deep.Equal`. It's like [reflect.DeepEqual](https://pkg.go.dev/reflect#DeepEqual) but friendlier to humans for two reason:
 
 * `deep.Equal` returns a list of differences
 * `deep.Equal` does not compare unexported fields (by default)

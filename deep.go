@@ -80,7 +80,7 @@ type cmp struct {
 	conf        Differ
 }
 
-var errorType = reflect.TypeFor[error]()
+var errorType = reflect.TypeFor[error]() // https://blog.carlana.net/post/2024/golang-reflect-type-for/
 
 // Equal compares variables a and b, recursing into their structure up to
 // MaxDepth levels deep (if greater than zero), and returns a list of differences,

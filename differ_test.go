@@ -50,3 +50,57 @@ func TestDiffer(t *testing.T) {
 		t.Error("should not be equal")
 	}
 }
+
+type mockT struct {
+	calledError  bool
+	calledFatal  bool
+	calledHelper bool
+}
+
+func (t *mockT) Error(args ...any) { t.calledError = true }
+func (t *mockT) Fatal(args ...any) { t.calledFatal = true }
+func (t *mockT) Helper()           { t.calledHelper = true }
+
+func TestDiffer_WithInlineTest(t *testing.T) {
+	// No diff, no calls to T except Helper
+	m := &mockT{}
+	d := deep.NewDiffer(deep.WithInlineTest(deep.InlineTest{T: m}))
+	d.Diff("foo", "foo")
+	if m.calledHelper == false {
+		t.Errorf("did not call T.Helper")
+	}
+	if m.calledError == true {
+		t.Errorf("called T.Error")
+	}
+	if m.calledFatal == true {
+		t.Errorf("called T.Fatal")
+	}
+
+	// Diff and by default Error, not Fatal, is called
+	m = &mockT{}
+	d = deep.NewDiffer(deep.WithInlineTest(deep.InlineTest{T: m}))
+	d.Diff("foo", "bar")
+	if m.calledHelper == false {
+		t.Errorf("did not call T.Helper")
+	}
+	if m.calledError != true {
+		t.Errorf("did not call T.Error")
+	}
+	if m.calledFatal == true {
+		t.Errorf("called T.Fatal")
+	}
+
+	// Diff and Fatal
+	m = &mockT{}
+	d = deep.NewDiffer(deep.WithInlineTest(deep.InlineTest{T: m, Fatal: true}))
+	d.Diff("foo", "bar")
+	if m.calledHelper == false {
+		t.Errorf("did not call T.Helper")
+	}
+	if m.calledError == true {
+		t.Errorf("called T.Error")
+	}
+	if m.calledFatal != true {
+		t.Errorf("did not call T.Fatal")
+	}
+}

@@ -92,6 +92,32 @@ func WithIgnoreSliceOrder(b bool) Opt {
 	}
 }
 
+// WithInlineTest causes Differ.Diff to call T.Error when diffs are found.
+// It also calls T.Helper to make the error report where it's called in the
+// unit test, not within Differ.Diff. This option replaces a common pattern:
+//
+//	if diff := deep.Equal("foo", "bar"); diff != nil {
+//	    t.Error(diff)
+//	}
+//
+// Instead, where d is a Differ with inline testing:
+//
+//	d.Diff("foo", "bar")
+//
+// With inline testing, Differ.Diff still returns a Diff (nil or non-nil).
+func WithInlineTest(i InlineTest) Opt {
+	return func(d *Differ) { d.inline = i }
+}
+
+// InlineTest is the value and options passed to WithInlineTest. Only T is
+// required, and notice: it's the deep.T interface, and standard library
+// testing.T satisfies this interface. (The deep.T interface is necessary
+// to test the testing.)
+type InlineTest struct {
+	T     T
+	Fatal bool // call T.Error by default
+}
+
 type Differ struct {
 	compareFunctions        bool
 	compareUnexportedFields bool
@@ -103,6 +129,7 @@ type Differ struct {
 	nilMapsAreEmpty         bool
 	nilPointersAreZero      bool
 	nilSlicesAreEmpty       bool
+	inline                  InlineTest
 }
 
 func NewDiffer(opts ...Opt) Differ {
@@ -146,6 +173,11 @@ func (d Diff) ToSlice() []string {
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
 func (d Differ) Diff(a, b any) Diff {
+	t := d.inline.T
+	if t != nil {
+		t.Helper()
+	}
+
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
 	c := &cmp{
@@ -154,20 +186,38 @@ func (d Differ) Diff(a, b any) Diff {
 		buff:        []string{},
 		floatFormat: fmt.Sprintf("%%.%df", d.floatPrecision),
 	}
+
+	// Can bypass full diff if both or only one operand is nil
 	if a == nil && b == nil {
 		return nil
 	} else if a == nil && b != nil {
 		c.saveDiff("<nil pointer>", b)
+		goto ret
 	} else if a != nil && b == nil {
 		c.saveDiff(a, "<nil pointer>")
-	}
-	if len(c.diff) > 0 {
-		return c.diff
+		goto ret
 	}
 
-	c.equals(aVal, bVal, 0)
+	c.equals(aVal, bVal, 0) // full diff
+
+ret:
 	if len(c.diff) > 0 {
+		if t != nil {
+			if d.inline.Fatal {
+				t.Fatal(c.diff)
+			} else {
+				t.Error(c.diff)
+			}
+		}
 		return c.diff // diffs
 	}
+
 	return nil // no diffs
+}
+
+// T is the subset of standard library testing.T that option WithInlineTest needs.
+type T interface {
+	Error(args ...any)
+	Fatal(args ...any)
+	Helper()
 }

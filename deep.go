@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -76,10 +77,10 @@ type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
-	flag        map[byte]bool
+	conf        Differ
 }
 
-var errorType = reflect.TypeOf((*error)(nil)).Elem()
+var errorType = reflect.TypeFor[error]() // https://blog.carlana.net/post/2024/golang-reflect-type-for/
 
 // Equal compares variables a and b, recursing into their structure up to
 // MaxDepth levels deep (if greater than zero), and returns a list of differences,
@@ -91,39 +92,32 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 //
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
-func Equal(a, b interface{}, flags ...interface{}) []string {
-	aVal := reflect.ValueOf(a)
-	bVal := reflect.ValueOf(b)
-	c := &cmp{
-		diff:        []string{},
-		buff:        []string{},
-		floatFormat: fmt.Sprintf("%%.%df", FloatPrecision),
-		flag:        map[byte]bool{},
-	}
-	for i := range flags {
-		c.flag[flags[i].(byte)] = true
-	}
-	if a == nil && b == nil {
-		return nil
-	} else if a == nil && b != nil {
-		c.saveDiff("<nil pointer>", b)
-	} else if a != nil && b == nil {
-		c.saveDiff(a, "<nil pointer>")
-	}
-	if len(c.diff) > 0 {
-		return c.diff
-	}
+func Equal(a, b any, flags ...any) []string {
+	// error ignored to preserve API
+	return NewDiffer(
+		WithCompareFunctions(CompareFunctions),
+		WithCompareUnexportedFields(CompareUnexportedFields),
+		WithFloatPrecision(uint(FloatPrecision)),
+		WithIgnoreSliceOrder(hasFlag(flags, FLAG_IGNORE_SLICE_ORDER)),
+		WithLogErrors(LogErrors),
+		WithMaxDepth(uint(MaxDepth)),
+		WithMaxDiff(uint(MaxDiff)),
+		WithNilMapsAreEmpty(NilMapsAreEmpty),
+		WithNilPointersAreZero(NilPointersAreZero),
+		WithNilSlicesAreEmpty(NilSlicesAreEmpty),
+	).Diff(a, b)
+}
 
-	c.equals(aVal, bVal, 0)
-	if len(c.diff) > 0 {
-		return c.diff // diffs
-	}
-	return nil // no diffs
+func hasFlag(flags []any, flag byte) bool {
+	return slices.ContainsFunc(flags, func(i any) bool {
+		v, ok := i.(byte)
+		return ok && v == flag
+	})
 }
 
 func (c *cmp) equals(a, b reflect.Value, level int) {
-	if MaxDepth > 0 && level > MaxDepth {
-		logError(ErrMaxRecursion)
+	if c.conf.maxDepth > 0 && uint(level) > c.conf.maxDepth {
+		c.logError(ErrMaxRecursion)
 		return
 	}
 
@@ -153,7 +147,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			bFullType := bType.PkgPath() + "." + bType.Name()
 			c.saveDiff(aFullType, bFullType)
 		}
-		logError(ErrTypeMismatch)
+		c.logError(ErrTypeMismatch)
 		return
 	}
 
@@ -162,8 +156,8 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	bKind := b.Kind()
 
 	// Do a and b have underlying elements? Yes if they're ptr or interface.
-	aElem := aKind == reflect.Ptr || aKind == reflect.Interface
-	bElem := bKind == reflect.Ptr || bKind == reflect.Interface
+	aElem := aKind == reflect.Pointer || aKind == reflect.Interface
+	bElem := bKind == reflect.Pointer || bKind == reflect.Interface
 
 	// If both types implement the error interface, compare the error strings.
 	// This must be done before dereferencing because errors.New() returns a
@@ -193,10 +187,10 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		if bElem {
 			b = b.Elem()
 		}
-		if aElem && NilPointersAreZero && !a.IsValid() && b.IsValid() {
+		if aElem && c.conf.nilPointersAreZero && !a.IsValid() && b.IsValid() {
 			a = reflect.Zero(b.Type())
 		}
-		if bElem && NilPointersAreZero && !b.IsValid() && a.IsValid() {
+		if bElem && c.conf.nilPointersAreZero && !b.IsValid() && a.IsValid() {
 			b = reflect.Zero(a.Type())
 		}
 		c.equals(a, b, level+1)
@@ -244,7 +238,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		}
 
 		for i := 0; i < a.NumField(); i++ {
-			if aType.Field(i).PkgPath != "" && !CompareUnexportedFields {
+			if aType.Field(i).PkgPath != "" && !c.conf.compareUnexportedFields {
 				continue // skip unexported field, e.g. s in type T struct {s string}
 			}
 
@@ -264,7 +258,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 			c.pop() // pop field name from buff
 
-			if len(c.diff) >= MaxDiff {
+			if uint(len(c.diff)) >= c.conf.maxDiff {
 				break
 			}
 		}
@@ -285,7 +279,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		*/
 
 		if a.IsNil() || b.IsNil() {
-			if NilMapsAreEmpty {
+			if c.conf.nilMapsAreEmpty {
 				if a.IsNil() && b.Len() != 0 {
 					c.saveDiff("<nil map>", b)
 					return
@@ -320,7 +314,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 			c.pop()
 
-			if len(c.diff) >= MaxDiff {
+			if uint(len(c.diff)) >= c.conf.maxDiff {
 				return
 			}
 		}
@@ -333,22 +327,22 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.push(fmt.Sprintf("map[%v]", key))
 			c.saveDiff("<does not have key>", b.MapIndex(key))
 			c.pop()
-			if len(c.diff) >= MaxDiff {
+			if uint(len(c.diff)) >= c.conf.maxDiff {
 				return
 			}
 		}
 	case reflect.Array:
 		n := a.Len()
-		for i := 0; i < n; i++ {
+		for i := range n {
 			c.push(fmt.Sprintf("array[%d]", i))
 			c.equals(a.Index(i), b.Index(i), level+1)
 			c.pop()
-			if len(c.diff) >= MaxDiff {
+			if uint(len(c.diff)) >= c.conf.maxDiff {
 				break
 			}
 		}
 	case reflect.Slice:
-		if NilSlicesAreEmpty {
+		if c.conf.nilSlicesAreEmpty {
 			if a.IsNil() && b.Len() != 0 {
 				c.saveDiff("<nil slice>", b)
 				return
@@ -378,30 +372,26 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			return
 		}
 
-		if c.flag[FLAG_IGNORE_SLICE_ORDER] {
+		if c.conf.ignoreSliceOrder {
 			// Compare slices by value and value count; ignore order.
 			// Value equality is implicitly established by the maps:
 			// any value v1 will hash to the same map value if it's equal
 			// to another value v2. Then equality is determined by value
 			// count: presuming v1==v2, then the slices are equal if there
 			// are equal numbers of v1 in each slice.
-			am := map[interface{}]int{}
+			am := map[any]int{}
 			for i := 0; i < a.Len(); i++ {
 				am[a.Index(i).Interface()] += 1
 			}
-			bm := map[interface{}]int{}
+			bm := map[any]int{}
 			for i := 0; i < b.Len(); i++ {
 				bm[b.Index(i).Interface()] += 1
 			}
-			c.cmpMapValueCounts(a, b, am, bm, true)  // a cmp b
-			c.cmpMapValueCounts(b, a, bm, am, false) // b cmp a
+			c.cmpMapValueCounts(am, bm, true)  // a cmp b
+			c.cmpMapValueCounts(bm, am, false) // b cmp a
 		} else {
 			// Compare slices by order
-			n := aLen
-			if bLen > aLen {
-				n = bLen
-			}
-			for i := 0; i < n; i++ {
+			for i := range max(aLen, bLen) {
 				c.push(fmt.Sprintf("slice[%d]", i))
 				if i < aLen && i < bLen {
 					c.equals(a.Index(i), b.Index(i), level+1)
@@ -411,7 +401,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 					c.saveDiff("<no value>", b.Index(i))
 				}
 				c.pop()
-				if len(c.diff) >= MaxDiff {
+				if uint(len(c.diff)) >= c.conf.maxDiff {
 					break
 				}
 			}
@@ -451,7 +441,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.saveDiff(a.String(), b.String())
 		}
 	case reflect.Func:
-		if CompareFunctions {
+		if c.conf.compareFunctions {
 			if !a.IsNil() || !b.IsNil() {
 				aVal, bVal := "nil func", "nil func"
 				if !a.IsNil() {
@@ -464,7 +454,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			}
 		}
 	default:
-		logError(ErrNotHandled)
+		c.logError(ErrNotHandled)
 	}
 }
 
@@ -478,7 +468,7 @@ func (c *cmp) pop() {
 	}
 }
 
-func (c *cmp) saveDiff(aval, bval interface{}) {
+func (c *cmp) saveDiff(aval, bval any) {
 	if len(c.buff) > 0 {
 		varName := strings.Join(c.buff, ".")
 		c.diff = append(c.diff, fmt.Sprintf("%s: %v != %v", varName, aval, bval))
@@ -487,7 +477,7 @@ func (c *cmp) saveDiff(aval, bval interface{}) {
 	}
 }
 
-func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[interface{}]int, a2b bool) {
+func (c *cmp) cmpMapValueCounts(am, bm map[any]int, a2b bool) {
 	for v := range am {
 		aCount, _ := am[v]
 		bCount, _ := bm[v]
@@ -506,8 +496,8 @@ func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[interface{}]int, 
 	}
 }
 
-func logError(err error) {
-	if LogErrors {
+func (c *cmp) logError(err error) {
+	if c.conf.logErrors {
 		log.Println(err)
 	}
 }

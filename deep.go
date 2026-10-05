@@ -80,7 +80,7 @@ type cmp struct {
 	conf        Differ
 }
 
-var errorType = reflect.TypeOf((*error)(nil)).Elem()
+var errorType = reflect.TypeFor[error]()
 
 // Equal compares variables a and b, recursing into their structure up to
 // MaxDepth levels deep (if greater than zero), and returns a list of differences,
@@ -92,7 +92,7 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 //
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
-func Equal(a, b interface{}, flags ...interface{}) []string {
+func Equal(a, b any, flags ...any) []string {
 	// error ignored to preserve API
 	differ, _ := New(
 		WithCompareFunctions(CompareFunctions),
@@ -109,8 +109,8 @@ func Equal(a, b interface{}, flags ...interface{}) []string {
 	return differ.Compare(a, b)
 }
 
-func hasFlag(flags []interface{}, flag byte) bool {
-	return slices.ContainsFunc(flags, func(i interface{}) bool {
+func hasFlag(flags []any, flag byte) bool {
+	return slices.ContainsFunc(flags, func(i any) bool {
 		v, ok := i.(byte)
 		return ok && v == flag
 	})
@@ -157,8 +157,8 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	bKind := b.Kind()
 
 	// Do a and b have underlying elements? Yes if they're ptr or interface.
-	aElem := aKind == reflect.Ptr || aKind == reflect.Interface
-	bElem := bKind == reflect.Ptr || bKind == reflect.Interface
+	aElem := aKind == reflect.Pointer || aKind == reflect.Interface
+	bElem := bKind == reflect.Pointer || bKind == reflect.Interface
 
 	// If both types implement the error interface, compare the error strings.
 	// This must be done before dereferencing because errors.New() returns a
@@ -334,7 +334,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		}
 	case reflect.Array:
 		n := a.Len()
-		for i := 0; i < n; i++ {
+		for i := range n {
 			c.push(fmt.Sprintf("array[%d]", i))
 			c.equals(a.Index(i), b.Index(i), level+1)
 			c.pop()
@@ -380,23 +380,19 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			// to another value v2. Then equality is determined by value
 			// count: presuming v1==v2, then the slices are equal if there
 			// are equal numbers of v1 in each slice.
-			am := map[interface{}]int{}
+			am := map[any]int{}
 			for i := 0; i < a.Len(); i++ {
 				am[a.Index(i).Interface()] += 1
 			}
-			bm := map[interface{}]int{}
+			bm := map[any]int{}
 			for i := 0; i < b.Len(); i++ {
 				bm[b.Index(i).Interface()] += 1
 			}
-			c.cmpMapValueCounts(a, b, am, bm, true)  // a cmp b
-			c.cmpMapValueCounts(b, a, bm, am, false) // b cmp a
+			c.cmpMapValueCounts(am, bm, true)  // a cmp b
+			c.cmpMapValueCounts(bm, am, false) // b cmp a
 		} else {
 			// Compare slices by order
-			n := aLen
-			if bLen > aLen {
-				n = bLen
-			}
-			for i := 0; i < n; i++ {
+			for i := range max(aLen, bLen) {
 				c.push(fmt.Sprintf("slice[%d]", i))
 				if i < aLen && i < bLen {
 					c.equals(a.Index(i), b.Index(i), level+1)
@@ -473,7 +469,7 @@ func (c *cmp) pop() {
 	}
 }
 
-func (c *cmp) saveDiff(aval, bval interface{}) {
+func (c *cmp) saveDiff(aval, bval any) {
 	if len(c.buff) > 0 {
 		varName := strings.Join(c.buff, ".")
 		c.diff = append(c.diff, fmt.Sprintf("%s: %v != %v", varName, aval, bval))
@@ -482,7 +478,7 @@ func (c *cmp) saveDiff(aval, bval interface{}) {
 	}
 }
 
-func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[interface{}]int, a2b bool) {
+func (c *cmp) cmpMapValueCounts(am, bm map[any]int, a2b bool) {
 	for v := range am {
 		aCount, _ := am[v]
 		bCount, _ := bm[v]

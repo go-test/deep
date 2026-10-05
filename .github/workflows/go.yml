@@ -16,9 +16,9 @@ jobs:
       fail-fast: false
       matrix:
         go:
+          - '1.26'
+          - '1.25'
           - '1.24'
-          - '1.23'
-          - '1.22'
     steps:
     - uses: actions/checkout@v3
 

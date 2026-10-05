@@ -94,19 +94,18 @@ var errorType = reflect.TypeFor[error]()
 // ignored.
 func Equal(a, b any, flags ...any) []string {
 	// error ignored to preserve API
-	differ, _ := New(
+	return NewDiffer(
 		WithCompareFunctions(CompareFunctions),
 		WithCompareUnexportedFields(CompareUnexportedFields),
-		WithFloatPrecision(FloatPrecision),
+		WithFloatPrecision(uint(FloatPrecision)),
 		WithIgnoreSliceOrder(hasFlag(flags, FLAG_IGNORE_SLICE_ORDER)),
 		WithLogErrors(LogErrors),
-		WithMaxDepth(MaxDepth),
-		WithMaxDiff(MaxDiff),
+		WithMaxDepth(uint(MaxDepth)),
+		WithMaxDiff(uint(MaxDiff)),
 		WithNilMapsAreEmpty(NilMapsAreEmpty),
 		WithNilPointersAreZero(NilPointersAreZero),
 		WithNilSlicesAreEmpty(NilSlicesAreEmpty),
-	)
-	return differ.Compare(a, b)
+	).Diff(a, b)
 }
 
 func hasFlag(flags []any, flag byte) bool {
@@ -117,7 +116,7 @@ func hasFlag(flags []any, flag byte) bool {
 }
 
 func (c *cmp) equals(a, b reflect.Value, level int) {
-	if c.conf.maxDepth > 0 && level > c.conf.maxDepth {
+	if c.conf.maxDepth > 0 && uint(level) > c.conf.maxDepth {
 		c.logError(ErrMaxRecursion)
 		return
 	}
@@ -259,7 +258,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 			c.pop() // pop field name from buff
 
-			if len(c.diff) >= c.conf.maxDiff {
+			if uint(len(c.diff)) >= c.conf.maxDiff {
 				break
 			}
 		}
@@ -315,7 +314,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 			c.pop()
 
-			if len(c.diff) >= c.conf.maxDiff {
+			if uint(len(c.diff)) >= c.conf.maxDiff {
 				return
 			}
 		}
@@ -328,7 +327,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.push(fmt.Sprintf("map[%v]", key))
 			c.saveDiff("<does not have key>", b.MapIndex(key))
 			c.pop()
-			if len(c.diff) >= c.conf.maxDiff {
+			if uint(len(c.diff)) >= c.conf.maxDiff {
 				return
 			}
 		}
@@ -338,7 +337,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.push(fmt.Sprintf("array[%d]", i))
 			c.equals(a.Index(i), b.Index(i), level+1)
 			c.pop()
-			if len(c.diff) >= c.conf.maxDiff {
+			if uint(len(c.diff)) >= c.conf.maxDiff {
 				break
 			}
 		}
@@ -402,7 +401,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 					c.saveDiff("<no value>", b.Index(i))
 				}
 				c.pop()
-				if len(c.diff) >= c.conf.maxDiff {
+				if uint(len(c.diff)) >= c.conf.maxDiff {
 					break
 				}
 			}

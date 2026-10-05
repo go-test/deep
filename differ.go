@@ -8,39 +8,35 @@ import (
 	"reflect"
 )
 
-type Opt func(*Differ) error
+type Opt func(*Differ)
 
 // WithFloatPrecision is the number of decimal places to round float values
 // to when comparing.
-func WithFloatPrecision(p int) Opt {
-	return func(d *Differ) error {
+func WithFloatPrecision(p uint) Opt {
+	return func(d *Differ) {
 		d.floatPrecision = p
-		return nil
 	}
 }
 
 // WithMaxDiff specifies the maximum number of differences to return.
-func WithMaxDiff(m int) Opt {
-	return func(d *Differ) error {
+func WithMaxDiff(m uint) Opt {
+	return func(d *Differ) {
 		d.maxDiff = m
-		return nil
 	}
 }
 
 // WithMaxDepth specifies the maximum levels of a struct to recurse into,
 // if greater than zero. If zero, there is no limit.
-func WithMaxDepth(m int) Opt {
-	return func(d *Differ) error {
+func WithMaxDepth(m uint) Opt {
+	return func(d *Differ) {
 		d.maxDepth = m
-		return nil
 	}
 }
 
 // WithLogErrors causes errors to be logged to STDERR when true.
 func WithLogErrors(b bool) Opt {
-	return func(differ *Differ) error {
-		differ.logErrors = b
-		return nil
+	return func(d *Differ) {
+		d.logErrors = b
 	}
 }
 
@@ -49,9 +45,8 @@ func WithLogErrors(b bool) Opt {
 // error or Time types on unexported fields because methods on unexported
 // fields cannot be called.
 func WithCompareUnexportedFields(b bool) Opt {
-	return func(differ *Differ) error {
-		differ.compareUnexportedFields = b
-		return nil
+	return func(d *Differ) {
+		d.compareUnexportedFields = b
 	}
 }
 
@@ -60,33 +55,29 @@ func WithCompareUnexportedFields(b bool) Opt {
 // This is disabled by default because previous versions of this package
 // ignored functions. Enabling it can possibly report new diffs.
 func WithCompareFunctions(b bool) Opt {
-	return func(differ *Differ) error {
-		differ.compareFunctions = b
-		return nil
+	return func(d *Differ) {
+		d.compareFunctions = b
 	}
 }
 
 // WithNilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
 func WithNilSlicesAreEmpty(b bool) Opt {
-	return func(differ *Differ) error {
-		differ.nilSlicesAreEmpty = b
-		return nil
+	return func(d *Differ) {
+		d.nilSlicesAreEmpty = b
 	}
 }
 
 // WithNilMapsAreEmpty causes a nil map to be equal to an empty map.
 func WithNilMapsAreEmpty(b bool) Opt {
-	return func(differ *Differ) error {
-		differ.nilMapsAreEmpty = b
-		return nil
+	return func(d *Differ) {
+		d.nilMapsAreEmpty = b
 	}
 }
 
 // WithNilPointersAreZero causes a nil pointer to be equal to a zero value.
 func WithNilPointersAreZero(b bool) Opt {
-	return func(differ *Differ) error {
-		differ.nilPointersAreZero = b
-		return nil
+	return func(d *Differ) {
+		d.nilPointersAreZero = b
 	}
 }
 
@@ -96,43 +87,39 @@ func WithNilPointersAreZero(b bool) Opt {
 // like []T where T is a struct, are undefined because Equal does not
 // recurse into the slice value when this flag is enabled.
 func WithIgnoreSliceOrder(b bool) Opt {
-	return func(differ *Differ) error {
-		differ.ignoreSliceOrder = b
-		return nil
+	return func(d *Differ) {
+		d.ignoreSliceOrder = b
 	}
 }
 
 type Differ struct {
 	compareFunctions        bool
 	compareUnexportedFields bool
-	floatPrecision          int
+	floatPrecision          uint
 	ignoreSliceOrder        bool
 	logErrors               bool
-	maxDepth                int
-	maxDiff                 int
+	maxDepth                uint
+	maxDiff                 uint
 	nilMapsAreEmpty         bool
 	nilPointersAreZero      bool
 	nilSlicesAreEmpty       bool
 }
 
-func New(opts ...Opt) (d Differ, err error) {
-	d = Differ{
+func NewDiffer(opts ...Opt) Differ {
+	d := Differ{
 		// options where zero-value equals default value are omitted
 		floatPrecision: 10,
 		maxDiff:        10,
 	}
 	for opt := range opts {
-		err = opts[opt](&d)
-		if err != nil {
-			return d, fmt.Errorf("invalid option: %w", err)
-		}
+		opts[opt](&d)
 	}
-	return d, nil
+	return d
 }
 
-type Delta []string
+type Diff []string
 
-func (d Delta) Equal(other Delta) bool {
+func (d Diff) Equal(other Diff) bool {
 	if len(d) != len(other) {
 		return false
 	}
@@ -144,7 +131,7 @@ func (d Delta) Equal(other Delta) bool {
 	return true
 }
 
-func (d Delta) ToSlice() []string {
+func (d Diff) ToSlice() []string {
 	return d
 }
 
@@ -158,7 +145,7 @@ func (d Delta) ToSlice() []string {
 //
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
-func (d Differ) Compare(a, b any) Delta {
+func (d Differ) Diff(a, b any) Diff {
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
 	c := &cmp{

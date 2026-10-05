@@ -1,6 +1,5 @@
 # Deep Variable Equality for Humans
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/go-test/deep)](https://goreportcard.com/report/github.com/go-test/deep)
 [![Coverage Status](https://coveralls.io/repos/github/go-test/deep/badge.svg?branch=master)](https://coveralls.io/github/go-test/deep?branch=master)
 [![Go Reference](https://pkg.go.dev/badge/github.com/go-test/deep.svg)](https://pkg.go.dev/github.com/go-test/deep)
 

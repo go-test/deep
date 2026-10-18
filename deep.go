@@ -216,7 +216,8 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		// unless it's b type. Later, we'll encounter the time.Time anonymous/
 		// embedded field and then we'll have Equal(time.Time, time.Time).
 		funcType := eqFunc.Type()
-		if funcType.NumIn() == 1 && funcType.In(0) == bType {
+		if funcType.NumIn() == 1 && funcType.In(0) == bType &&
+			funcType.NumOut() == 1 && funcType.Out(0).Kind() == reflect.Bool {
 			retVals := eqFunc.Call([]reflect.Value{b})
 			if !retVals[0].Bool() {
 				c.saveDiff(a, b)
@@ -422,6 +423,11 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	/////////////////////////////////////////////////////////////////////
 
 	case reflect.Float32, reflect.Float64:
+		// Equal numeric values include positive and negative zero, whose
+		// formatted strings differ.
+		if a.Float() == b.Float() {
+			return
+		}
 		// Round floats to FloatPrecision decimal places to compare with
 		// user-defined precision. As is commonly know, floats have "imprecision"
 		// such that 0.1 becomes 0.100000001490116119384765625. This cannot

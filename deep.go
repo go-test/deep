@@ -73,11 +73,19 @@ const (
 	FLAG_IGNORE_SLICE_ORDER
 )
 
+// pointerVisit identifies a pair on the current comparison path. Tracking
+// pairs, rather than individual pointers, preserves comparisons of shared nodes.
+type pointerVisit struct {
+	a, b uintptr
+	typ  reflect.Type
+}
+
 type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
 	conf        Differ
+	active      map[pointerVisit]bool
 }
 
 var errorType = reflect.TypeFor[error]() // https://blog.carlana.net/post/2024/golang-reflect-type-for/
@@ -179,6 +187,20 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		return
 	}
 
+	// A repeated pointer pair closes a cycle already being compared. Remove it
+	// on return so shared nodes still report differences on every acyclic path.
+	if aKind == reflect.Ptr {
+		visit := pointerVisit{a.Pointer(), b.Pointer(), aType}
+		if c.active[visit] {
+			return
+		}
+		if c.active == nil {
+			c.active = make(map[pointerVisit]bool)
+		}
+		c.active[visit] = true
+		defer delete(c.active, visit)
+	}
+
 	// Dereference pointers and interface{}
 	if aElem || bElem {
 		if aElem {
@@ -210,7 +232,8 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		// unless it's b type. Later, we'll encounter the time.Time anonymous/
 		// embedded field and then we'll have Equal(time.Time, time.Time).
 		funcType := eqFunc.Type()
-		if funcType.NumIn() == 1 && funcType.In(0) == bType {
+		if funcType.NumIn() == 1 && funcType.In(0) == bType &&
+			funcType.NumOut() == 1 && funcType.Out(0).Kind() == reflect.Bool {
 			retVals := eqFunc.Call([]reflect.Value{b})
 			if !retVals[0].Bool() {
 				c.saveDiff(a, b)
@@ -412,6 +435,11 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	/////////////////////////////////////////////////////////////////////
 
 	case reflect.Float32, reflect.Float64:
+		// Equal numeric values include positive and negative zero, whose
+		// formatted strings differ.
+		if a.Float() == b.Float() {
+			return
+		}
 		// Round floats to FloatPrecision decimal places to compare with
 		// user-defined precision. As is commonly know, floats have "imprecision"
 		// such that 0.1 becomes 0.100000001490116119384765625. This cannot
@@ -432,7 +460,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		if a.Int() != b.Int() {
 			c.saveDiff(a.Int(), b.Int())
 		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		if a.Uint() != b.Uint() {
 			c.saveDiff(a.Uint(), b.Uint())
 		}

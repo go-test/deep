@@ -3,6 +3,7 @@ package deep_test
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"reflect"
 	"sort"
@@ -99,6 +100,22 @@ func TestUint(t *testing.T) {
 	}
 	if diff[0] != "2 != 3" {
 		t.Error("wrong diff:", diff[0])
+	}
+}
+
+func TestUintptr(t *testing.T) {
+	if diff := deep.Equal(uintptr(1), uintptr(2)); len(diff) != 1 || diff[0] != "1 != 2" {
+		t.Fatalf("different uintptr values: %v", diff)
+	}
+	if diff := deep.Equal(uintptr(2), uintptr(2)); diff != nil {
+		t.Fatalf("equal uintptr values: %v", diff)
+	}
+}
+
+func TestUintptrStructField(t *testing.T) {
+	type value struct{ Handle uintptr }
+	if diff := deep.Equal(value{1}, value{2}); len(diff) != 1 || diff[0] != "Handle: 1 != 2" {
+		t.Fatalf("different uintptr fields: %v", diff)
 	}
 }
 
@@ -1645,5 +1662,180 @@ func TestEqualMethodOnSlice(t *testing.T) {
 	}
 	if diff := deep.Equal(a, net.ParseIP("1.2.3.5")); diff == nil {
 		t.Error("different IP addresses should not be equal")
+	}
+}
+
+type equalReturnsInt struct{ Value int }
+
+func (equalReturnsInt) Equal(equalReturnsInt) int {
+	panic("Equal with a non-bool result must not be called")
+}
+
+type equalReturnsNothing struct{ Value int }
+
+func (equalReturnsNothing) Equal(equalReturnsNothing) {
+	panic("Equal without a result must not be called")
+}
+
+type equalReturnsTwo struct{ Value int }
+
+func (equalReturnsTwo) Equal(equalReturnsTwo) (bool, error) {
+	panic("Equal with multiple results must not be called")
+}
+
+type equalReturnsNamedBool string
+type equalityBool bool
+
+func (s equalReturnsNamedBool) Equal(other equalReturnsNamedBool) equalityBool {
+	return equalityBool(len(s) == len(other))
+}
+
+func TestEqualMethodReturnSignature(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		a, b interface{}
+	}{
+		{"int result", equalReturnsInt{1}, equalReturnsInt{2}},
+		{"no result", equalReturnsNothing{1}, equalReturnsNothing{2}},
+		{"two results", equalReturnsTwo{1}, equalReturnsTwo{2}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if diff := deep.Equal(test.a, test.a); diff != nil {
+				t.Error("identical values should be equal:", diff)
+			}
+			if diff := deep.Equal(test.a, test.b); diff == nil {
+				t.Error("different fields should produce a diff")
+			}
+		})
+	}
+}
+
+func TestEqualMethodNamedBoolResult(t *testing.T) {
+	if diff := deep.Equal(equalReturnsNamedBool("ab"), equalReturnsNamedBool("cd")); diff != nil {
+		t.Error("existing Equal methods returning a named bool should be honored:", diff)
+	}
+	if diff := deep.Equal(equalReturnsNamedBool("ab"), equalReturnsNamedBool("c")); diff == nil {
+		t.Error("Equal returning false should produce a diff")
+	}
+}
+
+func TestSignedZero(t *testing.T) {
+	negativeZero := math.Copysign(0, -1)
+	for _, test := range []struct {
+		name string
+		a, b interface{}
+	}{
+		{"float64", float64(0), negativeZero},
+		{"float64 reversed", negativeZero, float64(0)},
+		{"float32", float32(0), float32(negativeZero)},
+		{"float32 reversed", float32(negativeZero), float32(0)},
+		{"nested", []float64{0}, []float64{negativeZero}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if diff := deep.Equal(test.a, test.b); diff != nil {
+				t.Error("positive and negative zero should be equal:", diff)
+			}
+		})
+	}
+}
+
+func TestPointerCycles(t *testing.T) {
+	oldDepth := deep.MaxDepth
+	deep.MaxDepth = 0
+	defer func() { deep.MaxDepth = oldDepth }()
+
+	type node struct {
+		Value int
+		Next  *node
+	}
+	a := &node{Value: 1}
+	a.Next = a
+	b := &node{Value: 1}
+	b.Next = b
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error("equal self-cycles:", diff)
+	}
+
+	b.Next = &node{Value: 2, Next: b}
+	if diff := deep.Equal(a, b); len(diff) == 0 {
+		t.Error("different value inside cycle was not compared")
+	}
+
+	b.Next.Value = 1
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error("equal values with different cycle lengths:", diff)
+	}
+}
+
+func TestDoubleLinkedTree(t *testing.T) {
+	oldDepth := deep.MaxDepth
+	deep.MaxDepth = 0
+	defer func() { deep.MaxDepth = oldDepth }()
+
+	type tree struct {
+		Name     string
+		Children []*tree
+		Parent   *tree
+	}
+	a := &tree{Name: "root"}
+	a.Children = []*tree{{Name: "child", Parent: a}}
+	b := &tree{Name: "root"}
+	b.Children = []*tree{{Name: "child", Parent: b}}
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error("equal double-linked trees:", diff)
+	}
+
+	b.Children[0].Name = "different"
+	if diff := deep.Equal(a, b); len(diff) != 1 || diff[0] != "Children.slice[0].Name: child != different" {
+		t.Error("unexpected tree difference:", diff)
+	}
+}
+
+func TestPointerCyclePairsAndSharedPaths(t *testing.T) {
+	oldDepth := deep.MaxDepth
+	deep.MaxDepth = 0
+	defer func() { deep.MaxDepth = oldDepth }()
+
+	type node struct {
+		Value int
+		Next  *node
+	}
+	a := &node{Value: 1}
+	a.Next = a
+	b := &node{Value: 1}
+	b.Next = b
+	c := &node{Value: 2}
+	c.Next = c
+
+	if diff := deep.Equal([]*node{a, a}, []*node{b, c}); len(diff) != 1 || diff[0] != "slice[1].Value: 1 != 2" {
+		t.Error("shared pointer paired with different values:", diff)
+	}
+	if diff := deep.Equal([]*node{a, a}, []*node{c, c}); len(diff) != 2 {
+		t.Error("both shared paths must report their difference:", diff)
+	}
+}
+
+func TestPointerCycleWithNilPointersAreZero(t *testing.T) {
+	oldDepth := deep.MaxDepth
+	deep.MaxDepth = 0
+	defer func() { deep.MaxDepth = oldDepth }()
+
+	old := deep.NilPointersAreZero
+	deep.NilPointersAreZero = true
+	defer func() { deep.NilPointersAreZero = old }()
+
+	type node struct {
+		Value int
+		Next  *node
+	}
+	var a *node
+	b := &node{}
+	b.Next = b
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error("nil and cyclic zero value:", diff)
+	}
+	b.Value = 1
+	if diff := deep.Equal(a, b); len(diff) == 0 {
+		t.Error("nil and nonzero cyclic value must differ")
 	}
 }

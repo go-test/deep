@@ -90,16 +90,11 @@ type cmp struct {
 
 var errorType = reflect.TypeFor[error]() // https://blog.carlana.net/post/2024/golang-reflect-type-for/
 
-// Equal compares variables a and b, recursing into their structure up to
-// MaxDepth levels deep (if greater than zero), and returns a list of differences,
-// or nil if there are none. Some differences may not be found if an error is
-// also returned.
+// Equal returns the set of differences between a and b, or nil if none found.
 //
-// If a type has an Equal method, like time.Equal, it is called to check for
-// equality.
-//
-// When comparing a struct, if a field has the tag `deep:"-"` then it will be
-// ignored.
+// This is the original package function that, as of v1.2, has been superseded
+// by Differ. It's functionally equivalent to a Differ with default values (no
+// options).
 func Equal(a, b any, flags ...any) []string {
 	// error ignored to preserve API
 	return NewDiffer(
@@ -113,7 +108,7 @@ func Equal(a, b any, flags ...any) []string {
 		WithNilMapsAreEmpty(NilMapsAreEmpty),
 		WithNilPointersAreZero(NilPointersAreZero),
 		WithNilSlicesAreEmpty(NilSlicesAreEmpty),
-	).Diff(a, b)
+	).diff(a, b)
 }
 
 func hasFlag(flags []any, flag byte) bool {

@@ -72,11 +72,19 @@ const (
 	FLAG_IGNORE_SLICE_ORDER
 )
 
+// pointerVisit identifies a pair on the current comparison path. Tracking
+// pairs, rather than individual pointers, preserves comparisons of shared nodes.
+type pointerVisit struct {
+	a, b uintptr
+	typ  reflect.Type
+}
+
 type cmp struct {
 	diff        []string
 	buff        []string
 	floatFormat string
 	flag        map[byte]bool
+	active      map[pointerVisit]bool
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
@@ -183,6 +191,20 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.saveDiff(aString, bString)
 		}
 		return
+	}
+
+	// A repeated pointer pair closes a cycle already being compared. Remove it
+	// on return so shared nodes still report differences on every acyclic path.
+	if aKind == reflect.Ptr {
+		visit := pointerVisit{a.Pointer(), b.Pointer(), aType}
+		if c.active[visit] {
+			return
+		}
+		if c.active == nil {
+			c.active = make(map[pointerVisit]bool)
+		}
+		c.active[visit] = true
+		defer delete(c.active, visit)
 	}
 
 	// Dereference pointers and interface{}

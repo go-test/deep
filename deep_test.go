@@ -1738,3 +1738,104 @@ func TestSignedZero(t *testing.T) {
 		})
 	}
 }
+
+func TestPointerCycles(t *testing.T) {
+	oldDepth := deep.MaxDepth
+	deep.MaxDepth = 0
+	defer func() { deep.MaxDepth = oldDepth }()
+
+	type node struct {
+		Value int
+		Next  *node
+	}
+	a := &node{Value: 1}
+	a.Next = a
+	b := &node{Value: 1}
+	b.Next = b
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error("equal self-cycles:", diff)
+	}
+
+	b.Next = &node{Value: 2, Next: b}
+	if diff := deep.Equal(a, b); len(diff) == 0 {
+		t.Error("different value inside cycle was not compared")
+	}
+
+	b.Next.Value = 1
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error("equal values with different cycle lengths:", diff)
+	}
+}
+
+func TestDoubleLinkedTree(t *testing.T) {
+	oldDepth := deep.MaxDepth
+	deep.MaxDepth = 0
+	defer func() { deep.MaxDepth = oldDepth }()
+
+	type tree struct {
+		Name     string
+		Children []*tree
+		Parent   *tree
+	}
+	a := &tree{Name: "root"}
+	a.Children = []*tree{{Name: "child", Parent: a}}
+	b := &tree{Name: "root"}
+	b.Children = []*tree{{Name: "child", Parent: b}}
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error("equal double-linked trees:", diff)
+	}
+
+	b.Children[0].Name = "different"
+	if diff := deep.Equal(a, b); len(diff) != 1 || diff[0] != "Children.slice[0].Name: child != different" {
+		t.Error("unexpected tree difference:", diff)
+	}
+}
+
+func TestPointerCyclePairsAndSharedPaths(t *testing.T) {
+	oldDepth := deep.MaxDepth
+	deep.MaxDepth = 0
+	defer func() { deep.MaxDepth = oldDepth }()
+
+	type node struct {
+		Value int
+		Next  *node
+	}
+	a := &node{Value: 1}
+	a.Next = a
+	b := &node{Value: 1}
+	b.Next = b
+	c := &node{Value: 2}
+	c.Next = c
+
+	if diff := deep.Equal([]*node{a, a}, []*node{b, c}); len(diff) != 1 || diff[0] != "slice[1].Value: 1 != 2" {
+		t.Error("shared pointer paired with different values:", diff)
+	}
+	if diff := deep.Equal([]*node{a, a}, []*node{c, c}); len(diff) != 2 {
+		t.Error("both shared paths must report their difference:", diff)
+	}
+}
+
+func TestPointerCycleWithNilPointersAreZero(t *testing.T) {
+	oldDepth := deep.MaxDepth
+	deep.MaxDepth = 0
+	defer func() { deep.MaxDepth = oldDepth }()
+
+	old := deep.NilPointersAreZero
+	deep.NilPointersAreZero = true
+	defer func() { deep.NilPointersAreZero = old }()
+
+	type node struct {
+		Value int
+		Next  *node
+	}
+	var a *node
+	b := &node{}
+	b.Next = b
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error("nil and cyclic zero value:", diff)
+	}
+	b.Value = 1
+	if diff := deep.Equal(a, b); len(diff) == 0 {
+		t.Error("nil and nonzero cyclic value must differ")
+	}
+}

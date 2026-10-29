@@ -462,6 +462,16 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		if aval != bval {
 			c.saveDiff(a.Float(), b.Float())
 		}
+	case reflect.Complex64, reflect.Complex128:
+		// Compare real and imaginary parts like floats.
+		aval, bval := a.Complex(), b.Complex()
+		if aval == bval {
+			return
+		}
+		if fmt.Sprintf(c.floatFormat, real(aval)) != fmt.Sprintf(c.floatFormat, real(bval)) ||
+			fmt.Sprintf(c.floatFormat, imag(aval)) != fmt.Sprintf(c.floatFormat, imag(bval)) {
+			c.saveDiff(aval, bval)
+		}
 	case reflect.Bool:
 		if a.Bool() != b.Bool() {
 			c.saveDiff(a.Bool(), b.Bool())

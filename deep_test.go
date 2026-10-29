@@ -119,6 +119,35 @@ func TestUintptrStructField(t *testing.T) {
 	}
 }
 
+func TestComplex(t *testing.T) {
+	if diff := deep.Equal(complex128(1+2i), complex128(1+2i)); diff != nil {
+		t.Error("should be equal:", diff)
+	}
+	if diff := deep.Equal(complex128(1+2i), complex128(3+2i)); len(diff) != 1 || diff[0] != "(1+2i) != (3+2i)" {
+		t.Error("different real parts:", diff)
+	}
+	if diff := deep.Equal(complex64(1+2i), complex64(1+5i)); len(diff) != 1 || diff[0] != "(1+2i) != (1+5i)" {
+		t.Error("different imaginary parts:", diff)
+	}
+
+	type signal struct{ Phase complex128 }
+	if diff := deep.Equal(signal{1 + 2i}, signal{1 - 2i}); len(diff) != 1 || diff[0] != "Phase: (1+2i) != (1-2i)" {
+		t.Error("different struct fields:", diff)
+	}
+
+	negativeZero := math.Copysign(0, -1)
+	if diff := deep.Equal(complex(0, 0), complex(negativeZero, negativeZero)); diff != nil {
+		t.Error("positive and negative zero parts should be equal:", diff)
+	}
+
+	defaultFloatPrecision := deep.FloatPrecision
+	deep.FloatPrecision = 6
+	defer func() { deep.FloatPrecision = defaultFloatPrecision }()
+	if diff := deep.Equal(complex(1.1234561, 1.1234561), complex(1.1234562, 1.1234562)); diff != nil {
+		t.Error("parts equal at FloatPrecision should be equal:", diff)
+	}
+}
+
 func TestBool(t *testing.T) {
 	diff := deep.Equal(true, true)
 	if len(diff) > 0 {

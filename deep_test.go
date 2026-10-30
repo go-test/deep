@@ -1839,3 +1839,95 @@ func TestPointerCycleWithNilPointersAreZero(t *testing.T) {
 		t.Error("nil and nonzero cyclic value must differ")
 	}
 }
+
+func TestSliceOrderMaxDiff(t *testing.T) {
+	originalMaxDiff := deep.MaxDiff
+	defer func() { deep.MaxDiff = originalMaxDiff }()
+
+	type record struct {
+		Label  string
+		Values []int
+	}
+	for _, test := range []struct {
+		name      string
+		limit     int
+		a, b      interface{}
+		ordered   bool
+		wantCount int
+		wantDiff  []string
+	}{
+		{
+			name: "default limit", limit: 10, wantCount: 10,
+			a: []int{1, 2, 3, 4, 5, 6, 7, 8},
+			b: []int{9, 10, 11, 12, 13, 14, 15, 16},
+		},
+		{
+			name: "limit one", limit: 1, wantCount: 1,
+			a: []int{1, 2, 3}, b: []int{4, 5, 6},
+		},
+		{
+			name: "left only", limit: 2, wantCount: 2,
+			a: []int{1, 2, 3, 4}, b: []int{},
+		},
+		{
+			name: "right only", limit: 2, wantCount: 2,
+			a: []int{}, b: []int{1, 2, 3, 4},
+		},
+		{
+			name: "reverse pass shares limit", limit: 2, wantCount: 2,
+			a: []int{1, 1}, b: []int{2, 3},
+		},
+		{
+			name: "earlier field shares limit", limit: 2, wantCount: 2,
+			a: record{"a", []int{1, 2, 3}},
+			b: record{"b", []int{4, 5, 6}},
+		},
+		{
+			name: "equal reordered duplicates", limit: 1, wantCount: 0,
+			a: []int{1, 2, 1}, b: []int{2, 1, 1},
+		},
+		{
+			name: "below limit multiplicities", limit: 10, wantCount: 3,
+			a: []int{1, 1}, b: []int{2, 3},
+			wantDiff: []string{
+				"(unordered) slice[]=1: value count: 2 != 0",
+				"(unordered) slice[]=2: value count: 0 != 1",
+				"(unordered) slice[]=3: value count: 0 != 1",
+			},
+		},
+		{
+			name: "ordered control", limit: 2, ordered: true, wantCount: 2,
+			a: []int{1, 2, 3}, b: []int{4, 5, 6},
+		},
+		{
+			name: "zero retains unordered behavior", limit: 0, wantCount: 6,
+			a: []int{1, 2, 3}, b: []int{4, 5, 6},
+		},
+		{
+			name: "negative retains unordered behavior", limit: -1, wantCount: 6,
+			a: []int{1, 2, 3}, b: []int{4, 5, 6},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			deep.MaxDiff = test.limit
+			var diff []string
+			if test.ordered {
+				diff = deep.Equal(test.a, test.b)
+			} else {
+				diff = deep.Equal(test.a, test.b, deep.FLAG_IGNORE_SLICE_ORDER)
+			}
+			if len(diff) != test.wantCount {
+				t.Fatalf("got %d diffs, want %d: %v", len(diff), test.wantCount, diff)
+			}
+			if test.wantCount == 0 && diff != nil {
+				t.Fatalf("equal values returned a non-nil diff: %v", diff)
+			}
+			if test.wantDiff != nil {
+				sort.Strings(diff)
+				if !reflect.DeepEqual(diff, test.wantDiff) {
+					t.Errorf("got %v, want %v", diff, test.wantDiff)
+				}
+			}
+		})
+	}
+}

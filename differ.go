@@ -279,19 +279,19 @@ func (d Differ) diff(a, b any) Diff {
 		return nil
 	} else if a == nil && b != nil {
 		c.saveDiff("<nil pointer>", b)
-		goto ret
 	} else if a != nil && b == nil {
 		c.saveDiff(a, "<nil pointer>")
-		goto ret
+	} else {
+		c.equals(aVal, bVal, 0) // full diff
 	}
 
-	c.equals(aVal, bVal, 0) // full diff
-
-ret:
+	// Return diffs if any, else return nil--never an empty slice--because
+	// this package has always been used like:
+	//   if diff := deep.Equal(a, b); diff != nil {
+	// Also, nil for no diffs is documented.
 	if len(c.diff) > 0 {
 		return c.diff // diffs
 	}
-
 	return nil // no diffs
 }
 

@@ -527,6 +527,9 @@ func (c *cmp) saveDiff(aval, bval interface{}) {
 
 func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[interface{}]int, a2b bool) {
 	for v := range am {
+		if len(c.diff) >= MaxDiff {
+			return
+		}
 		aCount, _ := am[v]
 		bCount, _ := bm[v]
 

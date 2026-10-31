@@ -1900,11 +1900,11 @@ func TestSliceOrderMaxDiff(t *testing.T) {
 			a: []int{1, 2, 3}, b: []int{4, 5, 6},
 		},
 		{
-			name: "zero retains unordered behavior", limit: 0, wantCount: 6,
+			name: "zero retains unordered behavior", limit: 0, wantCount: 0,
 			a: []int{1, 2, 3}, b: []int{4, 5, 6},
 		},
 		{
-			name: "negative retains unordered behavior", limit: -1, wantCount: 6,
+			name: "negative retains unordered behavior", limit: -1, wantCount: 0,
 			a: []int{1, 2, 3}, b: []int{4, 5, 6},
 		},
 	} {

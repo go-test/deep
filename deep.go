@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -401,7 +403,17 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			return
 		}
 
-		if c.flag[FLAG_IGNORE_SLICE_ORDER] {
+		unorderedFloats := c.flag[FLAG_IGNORE_SLICE_ORDER] &&
+			(a.Type().Elem().Kind() == reflect.Float32 || a.Type().Elem().Kind() == reflect.Float64)
+		if unorderedFloats {
+			if len(c.diff) >= MaxDiff {
+				return
+			}
+			// Sorting copies lets the scalar comparison apply FloatPrecision,
+			// while retaining multiplicities without changing the inputs.
+			a, b = sortedFloatSlice(a), sortedFloatSlice(b)
+		}
+		if c.flag[FLAG_IGNORE_SLICE_ORDER] && !unorderedFloats {
 			// Compare slices by value and value count; ignore order.
 			// Value equality is implicitly established by the maps:
 			// any value v1 will hash to the same map value if it's equal
@@ -425,7 +437,11 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 				n = bLen
 			}
 			for i := 0; i < n; i++ {
-				c.push(fmt.Sprintf("slice[%d]", i))
+				if unorderedFloats {
+					c.push(fmt.Sprintf("(unordered) slice[%d]", i))
+				} else {
+					c.push(fmt.Sprintf("slice[%d]", i))
+				}
 				if i < aLen && i < bLen {
 					c.equals(a.Index(i), b.Index(i), level+1)
 				} else if i < aLen {
@@ -504,6 +520,21 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 	default:
 		logError(ErrNotHandled)
 	}
+}
+
+// sortedFloatSlice orders NaNs before numbers and negative zero before positive
+// zero, so rounding and signed-zero comparisons use the same pairs in both slices.
+func sortedFloatSlice(v reflect.Value) reflect.Value {
+	out := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
+	reflect.Copy(out, v)
+	sort.Slice(out.Interface(), func(i, j int) bool {
+		a, b := out.Index(i).Float(), out.Index(j).Float()
+		if a == 0 && b == 0 {
+			return math.Signbit(a) && !math.Signbit(b)
+		}
+		return a < b || math.IsNaN(a) && !math.IsNaN(b)
+	})
+	return out
 }
 
 func (c *cmp) push(name string) {

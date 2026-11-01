@@ -1960,3 +1960,58 @@ func TestSliceOrderMaxDiff(t *testing.T) {
 		})
 	}
 }
+
+func TestSliceOrderFloatPrecision(t *testing.T) {
+	oldPrecision := deep.FloatPrecision
+	defer func() { deep.FloatPrecision = oldPrecision }()
+	type namedFloat float64
+	for _, tt := range []struct {
+		name      string
+		precision int
+		a, b      interface{}
+		equal     bool
+	}{
+		{"reported", 10, []float64{0.1, 2}, []float64{2, 0.100000000001}, true},
+		{"float32", 3, []float32{0.1, 2}, []float32{2, 0.10001}, true},
+		{"named", 3, []namedFloat{0.1, 2}, []namedFloat{2, 0.10001}, true},
+		{"negative", 3, []float64{-0.1, 2}, []float64{2, -0.10001}, true},
+		{"duplicates", 3, []float64{0.1, 0.10001, 2}, []float64{2, 0.10002, 0.10003}, true},
+		{"duplicate count", 3, []float64{0.1, 0.1, 2}, []float64{2, 2, 0.10001}, false},
+		{"outside precision", 3, []float64{0.1, 2}, []float64{2, 0.101}, false},
+		{"different lengths", 3, []float64{0.1, 2}, []float64{2, 0.10001, 0.1}, false},
+		{"signed zero", 3, []float64{math.Copysign(0, -1), 2}, []float64{2, 0}, true},
+		{"rounded signed zero", 3, []float64{math.Copysign(0, -1), 0.00001}, []float64{0, -0.00001}, true},
+		{"special values", 3, []float64{math.NaN(), math.Inf(1), math.Inf(-1)}, []float64{math.Inf(-1), math.NaN(), math.Inf(1)}, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			deep.FloatPrecision = tt.precision
+			aBefore, bBefore := fmt.Sprint(tt.a), fmt.Sprint(tt.b)
+			diff := deep.Equal(tt.a, tt.b, deep.FLAG_IGNORE_SLICE_ORDER)
+			if (diff == nil) != tt.equal {
+				t.Errorf("equal = %v, want %v: %v", diff == nil, tt.equal, diff)
+			}
+			if fmt.Sprint(tt.a) != aBefore || fmt.Sprint(tt.b) != bBefore {
+				t.Fatal("comparison modified an input slice")
+			}
+		})
+	}
+}
+
+func TestSliceOrderFloatMaxDiff(t *testing.T) {
+	oldMaxDiff := deep.MaxDiff
+	defer func() { deep.MaxDiff = oldMaxDiff }()
+	for _, limit := range []int{-1, 0, 1, 2, 10} {
+		deep.MaxDiff = limit
+		diff := deep.Equal([]float64{1, 2, 3}, []float64{4, 5, 6}, deep.FLAG_IGNORE_SLICE_ORDER)
+		want := limit
+		if want < 0 {
+			want = 0
+		}
+		if want > 3 {
+			want = 3
+		}
+		if len(diff) != want {
+			t.Errorf("MaxDiff %d: got %v, want %d diffs", limit, diff, want)
+		}
+	}
+}

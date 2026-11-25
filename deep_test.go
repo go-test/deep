@@ -1960,3 +1960,16 @@ func TestSliceOrderMaxDiff(t *testing.T) {
 		})
 	}
 }
+
+func TestSliceOrderUnhashableValues(t *testing.T) {
+	a := []interface{}{map[string]interface{}{"x": 1}, map[string]interface{}{"y": 2}}
+	b := []interface{}{map[string]interface{}{"y": 2}, map[string]interface{}{"x": 1}}
+	if diff := deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER); len(diff) != 0 {
+		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
+	}
+
+	b[0] = map[string]interface{}{"y": 3}
+	if diff := deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER); len(diff) == 0 {
+		t.Fatal("expected differences")
+	}
+}

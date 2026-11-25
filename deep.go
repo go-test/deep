@@ -402,22 +402,47 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		}
 
 		if c.flag[FLAG_IGNORE_SLICE_ORDER] {
-			// Compare slices by value and value count; ignore order.
-			// Value equality is implicitly established by the maps:
-			// any value v1 will hash to the same map value if it's equal
-			// to another value v2. Then equality is determined by value
-			// count: presuming v1==v2, then the slices are equal if there
-			// are equal numbers of v1 in each slice.
-			am := map[interface{}]int{}
-			for i := 0; i < a.Len(); i++ {
-				am[a.Index(i).Interface()] += 1
+			comparable := true
+			for i := 0; i < a.Len() && comparable; i++ {
+				comparable = reflect.TypeOf(a.Index(i).Interface()).Comparable()
 			}
-			bm := map[interface{}]int{}
-			for i := 0; i < b.Len(); i++ {
-				bm[b.Index(i).Interface()] += 1
+			for i := 0; i < b.Len() && comparable; i++ {
+				comparable = reflect.TypeOf(b.Index(i).Interface()).Comparable()
 			}
-			c.cmpMapValueCounts(a, b, am, bm, true)  // a cmp b
-			c.cmpMapValueCounts(b, a, bm, am, false) // b cmp a
+			if comparable {
+				// Compare slices by value and value count; ignore order.
+				am := map[interface{}]int{}
+				for i := 0; i < a.Len(); i++ {
+					am[a.Index(i).Interface()] += 1
+				}
+				bm := map[interface{}]int{}
+				for i := 0; i < b.Len(); i++ {
+					bm[b.Index(i).Interface()] += 1
+				}
+				c.cmpMapValueCounts(a, b, am, bm, true)  // a cmp b
+				c.cmpMapValueCounts(b, a, bm, am, false) // b cmp a
+			} else {
+				used := make([]bool, b.Len())
+				for i := 0; i < a.Len(); i++ {
+					matched := false
+					for j := 0; j < b.Len(); j++ {
+						if used[j] || len(Equal(a.Index(i).Interface(), b.Index(j).Interface(), FLAG_IGNORE_SLICE_ORDER)) != 0 {
+							continue
+						}
+						used[j] = true
+						matched = true
+						break
+					}
+					if !matched {
+						c.saveDiff(a.Index(i), "<no value>")
+					}
+				}
+				for j := 0; j < b.Len(); j++ {
+					if !used[j] {
+						c.saveDiff("<no value>", b.Index(j))
+					}
+				}
+			}
 		} else {
 			// Compare slices by order
 			n := aLen

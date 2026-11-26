@@ -1960,3 +1960,46 @@ func TestSliceOrderMaxDiff(t *testing.T) {
 		})
 	}
 }
+
+func TestComplexSignedZeroPrecision(t *testing.T) {
+	defaultFloatPrecision := deep.FloatPrecision
+	deep.FloatPrecision = 3
+	defer func() { deep.FloatPrecision = defaultFloatPrecision }()
+
+	negativeZero := math.Copysign(0, -1)
+	for _, test := range []struct {
+		name  string
+		a, b  complex128
+		equal bool
+	}{
+		{"real signed zero", complex(negativeZero, 1.00001), complex(0, 1.00002), true},
+		{"imaginary signed zero", complex(1.00001, negativeZero), complex(1.00002, 0), true},
+		{"both signed zeros", complex(negativeZero, negativeZero), 0, true},
+		{"exact real component", complex(2, 1.00001), complex(2, 1.00002), true},
+		{"exact imaginary component", complex(1.00001, 2), complex(1.00002, 2), true},
+		{"different real component", complex(0, 1.00001), complex(0.01, 1.00002), false},
+		{"different imaginary component", complex(1.00001, 0), complex(1.00002, 0.01), false},
+		{"real signed zero with different imaginary component", complex(negativeZero, 1), complex(0, 2), false},
+		{"imaginary signed zero with different real component", complex(1, negativeZero), complex(2, 0), false},
+	} {
+		for _, bits := range []int{64, 128} {
+			t.Run(fmt.Sprintf("complex%d/%s", bits, test.name), func(t *testing.T) {
+				var a, b interface{} = test.a, test.b
+				if bits == 64 {
+					a, b = complex64(test.a), complex64(test.b)
+				}
+				for _, reverse := range []bool{false, true} {
+					if reverse {
+						a, b = b, a
+					}
+					diff := deep.Equal(a, b)
+					if test.equal && diff != nil {
+						t.Errorf("Equal(%v, %v) should be nil: %v", a, b, diff)
+					} else if !test.equal && len(diff) != 1 {
+						t.Errorf("Equal(%v, %v) should have one difference: %v", a, b, diff)
+					}
+				}
+			})
+		}
+	}
+}

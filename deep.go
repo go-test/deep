@@ -468,8 +468,10 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		if aval == bval {
 			return
 		}
-		if fmt.Sprintf(c.floatFormat, real(aval)) != fmt.Sprintf(c.floatFormat, real(bval)) ||
-			fmt.Sprintf(c.floatFormat, imag(aval)) != fmt.Sprintf(c.floatFormat, imag(bval)) {
+		if (real(aval) != real(bval) &&
+			fmt.Sprintf(c.floatFormat, real(aval)) != fmt.Sprintf(c.floatFormat, real(bval))) ||
+			(imag(aval) != imag(bval) &&
+				fmt.Sprintf(c.floatFormat, imag(aval)) != fmt.Sprintf(c.floatFormat, imag(bval))) {
 			c.saveDiff(aval, bval)
 		}
 	case reflect.Bool:
